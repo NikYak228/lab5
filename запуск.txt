@@ -1,0 +1,1 @@
+g++ main.cpp Micro.cpp GameCanvas.cpp GamePhysics.cpp GameLevel.cpp LevelLoader.cpp TimerOrMotoPartOrMenuElem.cpp MathF16.cpp  -o mototest -I"C:/Users/user/projects/ver5/SDL2-2.32.8/x86_64-w64-mingw32/include" -L"C:/Users/user/projects/ver5/SDL2-2.32.8/x86_64-w64-mingw32/lib" -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf
