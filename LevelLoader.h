@@ -33,15 +33,15 @@ public:
     
     void loadHardcodedLevel();
     
-    int method_91();
-    int method_92();
-    int method_93();
-    int method_94();
-    int method_95(int var1);
-    void method_96(GameLevel* gameLevel);
+    int getFinishFlagX();
+    int getStartFlagX();
+    int getStartPosX();
+    int getStartPosY();
+    int getProgressAt(int x);
+    void prepareLevelData(GameLevel* gameLevel);
     void setMinMaxX(int minX, int maxX);
     void renderTrackNearestLine(GameCanvas* canvas);
     void renderLevel3D(GameCanvas* gameCanvas, int xF16, int yF16);
-    void method_100(int var1, int var2, int var3);
-    int method_101(TimerOrMotoPartOrMenuElem* var1, int var2);
+    void updateVisibleRange(int x1, int x2, int y);
+    int detectCollision(TimerOrMotoPartOrMenuElem* part, int wheelType);
 };

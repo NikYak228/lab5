@@ -16,11 +16,11 @@ void GameLevel::init() {
     pointPositions.clear();
 }
 
-void GameLevel::method_174(int var1, int var2, int var3, int var4) {
-    startPosX = var1 << 16 >> 3;
-    startPosY = var2 << 16 >> 3;
-    finishPosX = var3 << 16 >> 3;
-    finishPosY = var4 << 16 >> 3;
+void GameLevel::setStartFinish(int startX, int startY, int finishX, int finishY) {
+    startPosX = startX << 16 >> 3;
+    startPosY = startY << 16 >> 3;
+    finishPosX = finishX << 16 >> 3;
+    finishPosY = finishY << 16 >> 3;
 }
 
 void GameLevel::renderTrackNearestGreenLine(GameCanvas* gameCanvas) {
@@ -90,8 +90,8 @@ int GameLevel::getFinishPosY() { return finishPosY << 3 >> 16; }
 int GameLevel::getPointX(int pointNo) { return pointPositions[pointNo][0] << 3 >> 16; }
 int GameLevel::getPointY(int pointNo) { return pointPositions[pointNo][1] << 3 >> 16; }
 
-int GameLevel::method_181(int var1) {
-    int var2 = var1 - pointPositions[startFlagPoint][0];
+int GameLevel::computeProgress(int posX) {
+    int var2 = posX - pointPositions[startFlagPoint][0];
     int var3;
     return ((var3 = pointPositions[finishFlagPoint][0] - pointPositions[startFlagPoint][0]) < 0 ? -var3 : var3) >= 3 && var2 <= var3 ? (int)(((int64_t)var2 << 32) / (int64_t)var3 >> 16) : 65536;
 }
@@ -101,15 +101,15 @@ void GameLevel::setMinMaxX(int minX, int maxX) {
     this->maxX = maxX << 16 >> 3;
 }
 
-void GameLevel::method_183(int var1, int var2) {
-    field_264 = var1 >> 1;
-    field_265 = var2 >> 1;
+void GameLevel::setSegmentRange(int start, int end) {
+    field_264 = start >> 1;
+    field_265 = end >> 1;
 }
 
-void GameLevel::method_184(int var1, int var2, int var3) {
-    field_264 = var1;
-    field_265 = var2;
-    field_266 = var3;
+void GameLevel::setSegmentRangeExact(int start, int end, int extra) {
+    field_264 = start;
+    field_265 = end;
+    field_266 = extra;
 }
 
 // Функции отрисовки теней и 3D можно сделать пустыми, так как мы их отключили

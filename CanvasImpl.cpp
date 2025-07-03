@@ -43,7 +43,6 @@ SDL_Renderer* CanvasImpl::getRenderer() {
 
 void CanvasImpl::repaint() {
     SDL_RenderPresent(renderer);
-    std::cout << "[LOG] CanvasImpl::repaint() — done" << std::endl;
 }
 
 

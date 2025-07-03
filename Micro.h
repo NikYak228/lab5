@@ -16,9 +16,7 @@ public:
 
     bool field_242 = false;
     int numPhysicsLoops = 4;
-    int64_t timeMs = 0;
     int64_t gameTimeMs = 0;
-    int64_t field_246 = 0;
     bool isInited = false;
     bool field_248 = false;
     static bool field_249;

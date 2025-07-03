@@ -21,6 +21,8 @@ GameCanvas::GameCanvas(Micro* micro) : micro(micro) {
     vectorFont['9'] = { {{0,5},{3,5},{3,0},{0,0},{0,2},{3,2}} }; // перевернутая G
     vectorFont[':'] = { {{1,1},{2,1},{2,2},{1,2},{1,1}}, {{1,3},{2,3},{2,4},{1,4},{1,3}} }; // двоеточие
 }
+
+GameCanvas::~GameCanvas() = default;
 // GameCanvas.cpp
 
 void GameCanvas::drawVectorChar(char c, int start_x, int start_y, int scale) {
@@ -74,17 +76,14 @@ void GameCanvas::requestRepaint(int var1) {
 }
 
 void GameCanvas::updateSizeAndRepaint() {
-    std::cout << "[LOG] updateSizeAndRepaint() — before getWidth/getHeight" << std::endl;
     width = getWidth();
     height = getHeight();
-    std::cout << "[LOG] updateSizeAndRepaint() — new size: " 
-              << width << "×" << height << std::endl;
     repaint();
 }
 
 
-void GameCanvas::method_129() {
-    method_164();
+void GameCanvas::resetInput() {
+    clearInputStates();
 }
 static constexpr float CAM_ZOOM = 2.0f;
 void GameCanvas::setViewPosition(int dx, int dy) {
@@ -105,15 +104,15 @@ void GameCanvas::drawLineF16(int x, int y, int x2, int y2) {
     graphics->drawLine(addDx(x << 2 >> 16), addDy(y << 2 >> 16), addDx(x2 << 2 >> 16), addDy(y2 << 2 >> 16));
 }
 
-void GameCanvas::method_142(int var1, int var2, int var3, int var4) {
-    ++var3;
-    int var5 = addDx(var1 - var3);
-    int var6 = addDy(var2 + var3);
-    int var7 = var3 << 1;
-    if ((var4 = -((int)(((int64_t)((int)((int64_t)var4 * 11796480L >> 16)) << 32) / 205887L >> 16))) < 0) {
-        var4 += 360;
+void GameCanvas::drawBrakeDisc(int x, int y, int radius, int angle) {
+    ++radius;
+    int localX = addDx(x - radius);
+    int localY = addDy(y + radius);
+    int diameter = radius << 1;
+    if ((angle = -((int)(((int64_t)((int)((int64_t)angle * 11796480L >> 16)) << 32) / 205887L >> 16))) < 0) {
+        angle += 360;
     }
-    graphics->drawArc(var5, var6, var7, var7, (var4 >> 16) + 170, 90);
+    graphics->drawArc(localX, localY, diameter, diameter, (angle >> 16) + 170, 90);
 }
 
 void GameCanvas::drawCircle(int x, int y, int size) {
@@ -133,33 +132,21 @@ void GameCanvas::setColor(int red, int green, int blue) {
 }
 
 void GameCanvas::paint(Graphics* g) {
-    processTimers();
     drawGame(g);
-    std::cout << timeToDisplay << std::endl;
-    // drawVectorString(timeToDisplay, 20, 20, 4); 
 }
 void GameCanvas::drawGame(Graphics* g) {
-    std::cout << "[LOG] GameCanvas::drawGame() — begin" << std::endl;
     if (!Micro::field_249 || micro->field_242) {
-        std::cout << "[LOG] drawGame — skipping (field_249=" 
-                  << Micro::field_249 << ", field_242=" << micro->field_242 << ")" << std::endl;
         return;
     }
     graphics = g;
 
     // Проверяем размеры
-    std::cout << "[LOG] drawGame — width=" << width << ", height=" << height
-              << ", getWidth()=" << getWidth() << ", getHeight()=" << getHeight() << std::endl;
 
     if (height != getHeight()) {
-        std::cout << "[LOG] drawGame — size changed, calling updateSizeAndRepaint()" << std::endl;
         updateSizeAndRepaint();
     }
 
-    std::cout << "[LOG] drawGame — calling gamePhysics->setMotoComponents()" << std::endl;
     gamePhysics->setMotoComponents();
-
-    std::cout << "[LOG] drawGame — rendering physics" << std::endl;
     int logicalW = int(width  / CAM_ZOOM);
     int logicalH = int(height / CAM_ZOOM);
 
@@ -170,11 +157,10 @@ void GameCanvas::drawGame(Graphics* g) {
     gamePhysics->renderGame(this);
 
     graphics = nullptr;
-    std::cout << "[LOG] GameCanvas::drawGame() — end" << std::endl;
 }
 
 
-void GameCanvas::method_164() {
+void GameCanvas::clearInputStates() {
     for (int i = 0; i < 10; ++i) activeKeys[i] = false;
     for (int i = 0; i < 7; ++i) activeActions[i] = false;
 }
@@ -193,19 +179,9 @@ void GameCanvas::handleUpdatedInput() {
             var2 += field_230[i][1];
         }
     }
-    gamePhysics->method_30(var1, var2);
+    gamePhysics->applyUserInput(var1, var2);
 }
 
-void GameCanvas::processTimers() {
-    for (auto i = timers.begin(); i != timers.end();) {
-        if (i->ready()) {
-            timerTriggered = true; // Вместо показа текста просто взводим флаг
-            i = timers.erase(i);
-        } else {
-            i++;
-        }
-    }
-}
 
 void GameCanvas::processKeyPressed(int keyCode) {
     int action = getGameAction(keyCode);
@@ -234,12 +210,6 @@ void GameCanvas::init(GamePhysics* gp) {
     gamePhysics->setMinimalScreenWH(width < height ? width : height);
 }
 
-void GameCanvas::scheduleGameTimerTask(const std::string& message, int delayMs) {
-    (void)message; // Сообщение игнорируется
-    timerTriggered = false;
-    ++timerId;
-    timers.push_back(Timer(timerId, delayMs));
-}
 
 void GameCanvas::keyPressed(int var1) {
     processKeyPressed(var1);
@@ -283,17 +253,3 @@ void GameCanvas::drawSkyGradient() {
 }
 // GameCanvas.cpp (в конец файла)
 
-GameCanvas::~GameCanvas() {
-    // Очищаем память от запеченной текстуры при закрытии игры
-    if (bakedBackground) {
-        SDL_DestroyTexture(bakedBackground);
-    }
-}
-
-void GameCanvas::bakeBackground() {
-
-}
-
-void GameCanvas::drawBakedBackground() {
-
-}
