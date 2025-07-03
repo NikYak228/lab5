@@ -25,7 +25,7 @@ void LevelLoader::loadHardcodedLevel() {
         gameLevel = new GameLevel();
     }
     gameLevel->init();
-    gameLevel->method_174(0, 100, 12000, 100);
+    gameLevel->setStartFinish(0, 100, 12000, 100);
 
     // 1) Стартовая зона — ровная
     gameLevel->addPointSimple(-600, 100);
@@ -69,36 +69,36 @@ void LevelLoader::loadHardcodedLevel() {
     gameLevel->addPointSimple(5000, 200);
 
     // Передаём level-у информацию о триггерах старта/финиша
-    method_96(gameLevel);
+    prepareLevelData(gameLevel);
 }
 
 
-int LevelLoader::method_91()
+int LevelLoader::getFinishFlagX()
 {
     return gameLevel->pointPositions[gameLevel->finishFlagPoint][0] << 1;
 }
 
-int LevelLoader::method_92()
+int LevelLoader::getStartFlagX()
 {
     return gameLevel->pointPositions[gameLevel->startFlagPoint][0] << 1;
 }
 
-int LevelLoader::method_93()
+int LevelLoader::getStartPosX()
 {
     return gameLevel->startPosX << 1;
 }
 
-int LevelLoader::method_94()
+int LevelLoader::getStartPosY()
 {
     return gameLevel->startPosY << 1;
 }
 
-int LevelLoader::method_95(int var1)
+int LevelLoader::getProgressAt(int var1)
 {
-    return gameLevel->method_181(var1 >> 1);
+    return gameLevel->computeProgress(var1 >> 1);
 }
 
-void LevelLoader::method_96(GameLevel* gameLevel)
+void LevelLoader::prepareLevelData(GameLevel* gameLevel)
 {
     field_131 = INT_MIN;
     this->gameLevel = gameLevel;
@@ -150,9 +150,9 @@ void LevelLoader::renderTrackNearestLine(GameCanvas* canvas)
     gameLevel->renderTrackNearestGreenLine(canvas);
 }
 
-void LevelLoader::method_100(int var1, int var2, int var3)
+void LevelLoader::updateVisibleRange(int var1, int var2, int var3)
 {
-    gameLevel->method_184((var1 + 98304) >> 1, (var2 - 98304) >> 1, var3 >> 1);
+    gameLevel->setSegmentRangeExact((var1 + 98304) >> 1, (var2 - 98304) >> 1, var3 >> 1);
     var2 >>= 1;
     var1 >>= 1;
     field_134 = field_134 < gameLevel->pointsCount - 1 ? field_134 : gameLevel->pointsCount - 1;
@@ -181,7 +181,7 @@ void LevelLoader::method_100(int var1, int var2, int var3)
     field_136 = gameLevel->pointPositions[field_134][0];
 }
 
-int LevelLoader::method_101(TimerOrMotoPartOrMenuElem* var1, int var2)
+int LevelLoader::detectCollision(TimerOrMotoPartOrMenuElem* var1, int var2)
 {
     int var16 = 0;
     int8_t var17 = 2;

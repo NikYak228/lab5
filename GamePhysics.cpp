@@ -38,7 +38,7 @@ GamePhysics::GamePhysics(LevelLoader* levelLoader)
     this->levelLoader = levelLoader;
     resetSmth(true);
     isGenerateInputAI = false;
-    method_53();
+    snapshotMotoState();
     field_35 = false;
 }
 
@@ -53,15 +53,15 @@ int GamePhysics::method_21()
     }
 }
 
-void GamePhysics::method_22(int var1)
+void GamePhysics::setRenderFlags(int flags)
 {
     field_46 = false;
     isRenderMotoWithSprites = false;
-    if ((var1 & 2) != 0) {
+    if ((flags & 2) != 0) {
         field_46 = true;
     }
 
-    if ((var1 & 1) != 0) {
+    if ((flags & 1) != 0) {
         isRenderMotoWithSprites = true;
     }
 }
@@ -172,14 +172,11 @@ void GamePhysics::setMotoLeague(int league)
 
 void GamePhysics::resetSmth(bool unused)
 {
-    std::cout << "[LOG] resetSmth >> Start" << std::endl;
 
     (void)unused;
     field_44 = 0;
 
-    std::cout << "[LOG] resetSmth >> Calling method_27..." << std::endl;
-    method_27(levelLoader->method_93(), levelLoader->method_94());
-    std::cout << "[LOG] resetSmth >> Finished method_27." << std::endl;
+    setupBike(levelLoader->getStartPosX(), levelLoader->getStartPosY());
 
     field_31 = 0;
     field_39 = 0;
@@ -191,16 +188,13 @@ void GamePhysics::resetSmth(bool unused)
     field_41 = false;
     field_42 = false;
 
-    std::cout << "[LOG] resetSmth >> Preparing to call method_183..." << std::endl;
     // ВНИМАНИЕ: СКОРЕЕ ВСЕГО, ПАДЕНИЕ ПРОИСХОДИТ НА СТРОКЕ НИЖЕ
-    levelLoader->gameLevel->method_183(field_29[2]->motoComponents[5]->xF16 + 98304 - const175_1_half[0], field_29[1]->motoComponents[5]->xF16 - 98304 + const175_1_half[0]);
-    std::cout << "[LOG] resetSmth >> Finished method_183." << std::endl;
-    std::cout << "[LOG] resetSmth >> Finish" << std::endl;
+    levelLoader->gameLevel->setSegmentRange(field_29[2]->motoComponents[5]->xF16 + 98304 - const175_1_half[0], field_29[1]->motoComponents[5]->xF16 - 98304 + const175_1_half[0]);
 }
 
-void GamePhysics::method_26(bool var1)
+void GamePhysics::shiftBikeVertical(bool up)
 {
-    int var2 = (var1 ? 65536 : -65536) << 1;
+    int var2 = (up ? 65536 : -65536) << 1;
 
     for (int var3 = 0; var3 < 6; ++var3) {
         for (int var4 = 0; var4 < 6; ++var4) {
@@ -209,7 +203,7 @@ void GamePhysics::method_26(bool var1)
     }
 }
 
-void GamePhysics::method_27(int var1, int var2)
+void GamePhysics::setupBike(int startX, int startY)
 {
     if (field_29.empty()) {
         field_29 = std::vector<std::unique_ptr<class_10>>(6);
@@ -274,10 +268,10 @@ void GamePhysics::method_27(int var1, int var2)
         field_29[i]->field_257 = const175_1_half[var5];
         field_29[i]->field_258 = var5;
         field_29[i]->field_259 = (int)((int64_t)((int)(281474976710656L / (int64_t)var4 >> 16)) * (int64_t)field_14 >> 16);
-        field_29[i]->motoComponents[index01]->xF16 = var1 + var6;
-        field_29[i]->motoComponents[index01]->yF16 = var2 + var7 + 500000;
-        field_29[i]->motoComponents[5]->xF16 = var1 + var6;
-        field_29[i]->motoComponents[5]->yF16 = var2 + var7 + 500000;
+        field_29[i]->motoComponents[index01]->xF16 = startX + var6;
+        field_29[i]->motoComponents[index01]->yF16 = startY + var7 + 500000;
+        field_29[i]->motoComponents[5]->xF16 = startX + var6;
+        field_29[i]->motoComponents[5]->yF16 = startY + var7 + 500000;
         field_29[i]->field_260 = var8;
     }
 
@@ -319,22 +313,22 @@ void GamePhysics::processPointerReleased()
     isInputUp = isInputDown = isInputRight = isInputLeft = false;
 }
 
-void GamePhysics::method_30(int var1, int var2)
+void GamePhysics::applyUserInput(int xDir, int yDir)
 {
     if (!isGenerateInputAI) {
         isInputUp = isInputDown = isInputRight = isInputLeft = false;
-        if (var1 > 0) {
+        if (xDir > 0) {
             isInputUp = true;
-        } else if (var1 < 0) {
+        } else if (xDir < 0) {
             isInputDown = true;
         }
 
-        if (var2 > 0) {
+        if (yDir > 0) {
             isInputRight = true;
             return;
         }
 
-        if (var2 < 0) {
+        if (yDir < 0) {
             isInputLeft = true;
         }
     }
@@ -376,7 +370,7 @@ void GamePhysics::setInputFromAI()
 
 // GamePhysics.cpp
 
-void GamePhysics::method_35()
+void GamePhysics::updateBikePhysics()
 {
     if (!field_35) {
         int var1 = field_29[1]->motoComponents[index01]->xF16 - field_29[2]->motoComponents[index01]->xF16;
@@ -519,7 +513,6 @@ void GamePhysics::method_35()
 
 int GamePhysics::updatePhysics()
 {
-    std::cout << "[LOG] GamePhysics::updatePhysics() CALLED" << std::endl; // <-- Добавьте эту строку
     isInputAcceleration = isInputUp;
     isInputBreak = isInputDown;
     isInputBack = isInputLeft;
@@ -528,9 +521,9 @@ int GamePhysics::updatePhysics()
     if (isGenerateInputAI) {
         setInputFromAI();
     }
-    method_35();
+    updateBikePhysics();
     int var1;
-    if ((var1 = method_39(field_7)) != 5 && !field_36) {
+    if ((var1 = runPhysicsLoop(field_7)) != 5 && !field_36) {
         if (field_35) {
             return 3;
         } else if (isTrackStarted()) {
@@ -546,17 +539,17 @@ int GamePhysics::updatePhysics()
 
 bool GamePhysics::isTrackStarted()
 {
-    return field_29[1]->motoComponents[index01]->xF16 < levelLoader->method_92();
+    return field_29[1]->motoComponents[index01]->xF16 < levelLoader->getStartFlagX();
 }
 
 bool GamePhysics::method_38()
 {
-    return field_29[1]->motoComponents[index10]->xF16 > levelLoader->method_91() || field_29[2]->motoComponents[index10]->xF16 > levelLoader->method_91();
+    return field_29[1]->motoComponents[index10]->xF16 > levelLoader->getFinishFlagX() || field_29[2]->motoComponents[index10]->xF16 > levelLoader->getFinishFlagX();
 }
 
 // GamePhysics.cpp
 
-int GamePhysics::method_39(int var1)
+int GamePhysics::runPhysicsLoop(int var1)
 {
     bool var2 = field_68;
     int var3 = 0;
@@ -574,11 +567,11 @@ label77:
 
         int var5;
         while (var3 < var1) {
-            method_45(var4 - var3);
+            updateComponents(var4 - var3);
             if (!var2 && method_38()) {
                 var5 = 3;
             } else {
-                var5 = method_46(index10);
+                var5 = updateLevelCollision(index10);
             }
 
             if (!var2 && field_68) {
@@ -600,8 +593,8 @@ label77:
                 int var6;
                 if (var5 == 1) {
                     do {
-                        method_47(index10);
-                        if ((var6 = method_46(index10)) == 0) {
+                        updateWheelPhysics(index10);
+                        if ((var6 = updateLevelCollision(index10)) == 0) {
                             return 5;
                         }
                     } while (var6 != 2);
@@ -628,7 +621,7 @@ label77:
     return 5;
 }
 
-void GamePhysics::method_40(int var1)
+void GamePhysics::applyForces(int var1)
 {
     TimerOrMotoPartOrMenuElem* var3;
     int var4;
@@ -643,18 +636,18 @@ void GamePhysics::method_40(int var1)
     }
 
     if (!field_35) {
-        method_42(field_29[0].get(), field_30[1].get(), field_29[2].get(), var1, 65536);
-        method_42(field_29[0].get(), field_30[0].get(), field_29[1].get(), var1, 65536);
-        method_42(field_29[2].get(), field_30[6].get(), field_29[4].get(), var1, 131072);
-        method_42(field_29[1].get(), field_30[5].get(), field_29[3].get(), var1, 131072);
+        applySpringConstraint(field_29[0].get(), field_30[1].get(), field_29[2].get(), var1, 65536);
+        applySpringConstraint(field_29[0].get(), field_30[0].get(), field_29[1].get(), var1, 65536);
+        applySpringConstraint(field_29[2].get(), field_30[6].get(), field_29[4].get(), var1, 131072);
+        applySpringConstraint(field_29[1].get(), field_30[5].get(), field_29[3].get(), var1, 131072);
     }
 
-    method_42(field_29[0].get(), field_30[2].get(), field_29[3].get(), var1, 65536);
-    method_42(field_29[0].get(), field_30[3].get(), field_29[4].get(), var1, 65536);
-    method_42(field_29[3].get(), field_30[4].get(), field_29[4].get(), var1, 65536);
-    method_42(field_29[5].get(), field_30[8].get(), field_29[3].get(), var1, 65536);
-    method_42(field_29[5].get(), field_30[7].get(), field_29[4].get(), var1, 65536);
-    method_42(field_29[5].get(), field_30[9].get(), field_29[0].get(), var1, 65536);
+    applySpringConstraint(field_29[0].get(), field_30[2].get(), field_29[3].get(), var1, 65536);
+    applySpringConstraint(field_29[0].get(), field_30[3].get(), field_29[4].get(), var1, 65536);
+    applySpringConstraint(field_29[3].get(), field_30[4].get(), field_29[4].get(), var1, 65536);
+    applySpringConstraint(field_29[5].get(), field_30[8].get(), field_29[3].get(), var1, 65536);
+    applySpringConstraint(field_29[5].get(), field_30[7].get(), field_29[4].get(), var1, 65536);
+    applySpringConstraint(field_29[5].get(), field_30[9].get(), field_29[0].get(), var1, 65536);
     var3 = field_29[2]->motoComponents[var1].get();
     field_31 = (int)((int64_t)field_31 * (int64_t)(65536 - field_19) >> 16);
     var3->field_387 = field_31;
@@ -707,7 +700,7 @@ int GamePhysics::getSmthLikeMaxAbs(int xF16, int yF16)
     return (int)length;
 }
 
-void GamePhysics::method_42(class_10* var1, TimerOrMotoPartOrMenuElem* var2, class_10* var3, int var4, int var5)
+void GamePhysics::applySpringConstraint(class_10* var1, TimerOrMotoPartOrMenuElem* var2, class_10* var3, int var4, int var5)
 {
     TimerOrMotoPartOrMenuElem* var6 = var1->motoComponents[var4].get();
     TimerOrMotoPartOrMenuElem* var7 = var3->motoComponents[var4].get();
@@ -734,7 +727,7 @@ void GamePhysics::method_42(class_10* var1, TimerOrMotoPartOrMenuElem* var2, cla
     }
 }
 
-void GamePhysics::method_43(int var1, int var2, int var3)
+void GamePhysics::blendComponentState(int var1, int var2, int var3)
 {
     for (int var7 = 0; var7 < 6; ++var7) {
         TimerOrMotoPartOrMenuElem* var4 = field_29[var7]->motoComponents[var1].get();
@@ -747,7 +740,7 @@ void GamePhysics::method_43(int var1, int var2, int var3)
     }
 }
 
-void GamePhysics::method_44(int var1, int var2, int var3)
+void GamePhysics::combineComponentState(int var1, int var2, int var3)
 {
     for (int var7 = 0; var7 < 6; ++var7) {
         TimerOrMotoPartOrMenuElem* var4 = field_29[var7]->motoComponents[var1].get();
@@ -760,16 +753,16 @@ void GamePhysics::method_44(int var1, int var2, int var3)
     }
 }
 
-void GamePhysics::method_45(int var1)
+void GamePhysics::updateComponents(int var1)
 {
-    method_40(index01);
-    method_43(index01, 2, var1);
-    method_44(4, index01, 2);
-    method_40(4);
-    method_43(4, 3, var1 >> 1);
-    method_44(4, index01, 3);
-    method_44(index10, index01, 2);
-    method_44(index10, index10, 3);
+    applyForces(index01);
+    blendComponentState(index01, 2, var1);
+    combineComponentState(4, index01, 2);
+    applyForces(4);
+    blendComponentState(4, 3, var1 >> 1);
+    combineComponentState(4, index01, 3);
+    combineComponentState(index10, index01, 2);
+    combineComponentState(index10, index10, 3);
 
     for (int var4 = 1; var4 <= 2; ++var4) {
         TimerOrMotoPartOrMenuElem* var2 = field_29[var4]->motoComponents[index01].get();
@@ -779,12 +772,12 @@ void GamePhysics::method_45(int var1)
     }
 }
 
-int GamePhysics::method_46(int var1)
+int GamePhysics::updateLevelCollision(int var1)
 {
     int8_t var2 = 2;
     int var4 = std::max({ field_29[1]->motoComponents[var1]->xF16, field_29[2]->motoComponents[var1]->xF16, field_29[5]->motoComponents[var1]->xF16 });
     int var5 = std::min({ field_29[1]->motoComponents[var1]->xF16, field_29[2]->motoComponents[var1]->xF16, field_29[5]->motoComponents[var1]->xF16 });
-    levelLoader->method_100(var5 - const175_1_half[0], var4 + const175_1_half[0], field_29[5]->motoComponents[var1]->yF16);
+    levelLoader->updateVisibleRange(var5 - const175_1_half[0], var4 + const175_1_half[0], field_29[5]->motoComponents[var1]->yF16);
     int var6 = field_29[1]->motoComponents[var1]->xF16 - field_29[2]->motoComponents[var1]->xF16;
     int var7 = field_29[1]->motoComponents[var1]->yF16 - field_29[2]->motoComponents[var1]->yF16;
     int var8 = getSmthLikeMaxAbs(var6, var7);
@@ -800,7 +793,7 @@ int GamePhysics::method_46(int var1)
                 var3->yF16 += (int)((int64_t)var10 * 65536L >> 16);
             }
 
-            int var12 = levelLoader->method_101(var3, field_29[var11]->field_258);
+            int var12 = levelLoader->detectCollision(var3, field_29[var11]->field_258);
             if (var11 == 0) {
                 var3->xF16 -= (int)((int64_t)var9 * 65536L >> 16);
                 var3->yF16 -= (int)((int64_t)var10 * 65536L >> 16);
@@ -830,7 +823,7 @@ int GamePhysics::method_46(int var1)
     return var2;
 }
 
-void GamePhysics::method_47(int var1)
+void GamePhysics::updateWheelPhysics(int var1)
 {
     class_10* var2;
     TimerOrMotoPartOrMenuElem* var3;
@@ -912,13 +905,13 @@ int GamePhysics::getCamPosY()
     return (motoComponents[0]->yF16 + camShiftY) << 2 >> 16;
 }
 
-int GamePhysics::method_52()
+int GamePhysics::getGroundHeight()
 {
     int var1 = motoComponents[1]->xF16 < motoComponents[2]->xF16 ? motoComponents[2]->xF16 : motoComponents[1]->xF16;
-    return field_35 ? levelLoader->method_95(motoComponents[0]->xF16) : levelLoader->method_95(var1);
+    return field_35 ? levelLoader->getProgressAt(motoComponents[0]->xF16) : levelLoader->getProgressAt(var1);
 }
 
-void GamePhysics::method_53()
+void GamePhysics::snapshotMotoState()
 {
     // synchronized (field_29) {
     for (int var2 = 0; var2 < 6; ++var2) {
@@ -1168,7 +1161,7 @@ void GamePhysics::renderGame(GameCanvas* gameCanvas)
         int x1 = motoComponents[3]->xF16;
         int x2 = motoComponents[4]->xF16;
         if (x2 < x1) std::swap(x1,x2);
-        levelLoader->gameLevel->method_183(x1, x2);
+        levelLoader->gameLevel->setSegmentRange(x1, x2);
     }
     int xxF16 = motoComponents[3]->xF16 - motoComponents[4]->xF16;
     int yyF16 = motoComponents[3]->yF16 - motoComponents[4]->yF16;
@@ -1186,7 +1179,7 @@ void GamePhysics::renderGame(GameCanvas* gameCanvas)
     gameCanvas->setColor(50, 50, 50);
 
     // Рисуем тормозные диски (простые дуги)
-    gameCanvas->method_142(motoComponents[1]->xF16 << 2 >> 16, motoComponents[1]->yF16 << 2 >> 16, const175_1_half[0] << 2 >> 16, MathF16::atan2F16(xxF16, yyF16));
+    gameCanvas->drawBrakeDisc(motoComponents[1]->xF16 << 2 >> 16, motoComponents[1]->yF16 << 2 >> 16, const175_1_half[0] << 2 >> 16, MathF16::atan2F16(xxF16, yyF16));
     
     // Рисуем вилку мотоцикла (линия)
     if (!field_35) { // field_35 - флаг, что мотоцикл не развалился

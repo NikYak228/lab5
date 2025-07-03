@@ -48,17 +48,17 @@ private:
     const std::vector<std::vector<int>> hardcodedArr6 = { { 157286, 13107 }, { 294912, -13107 }, { 367001, 104857 }, { 406323, 176947 }, { 347340, 72089 }, { 39321, -98304 }, { 13107, -52428 }, { 288358, 85196 } };
     std::vector<std::vector<int>> field_80;
 
-    void method_27(int var1, int var2);
+    void setupBike(int startX, int startY);
     void setInputFromAI();
-    void method_35();
-    int method_39(int var1);
-    void method_40(int var1);
-    void method_42(class_10* var1, TimerOrMotoPartOrMenuElem* var2, class_10* var3, int var4, int var5);
-    void method_43(int var1, int var2, int var3);
-    void method_44(int var1, int var2, int var3);
-    void method_45(int var1);
-    int method_46(int var1);
-    void method_47(int var1);
+    void updateBikePhysics();
+    int runPhysicsLoop(int maxStep);
+    void applyForces(int var1);
+    void applySpringConstraint(class_10* var1, TimerOrMotoPartOrMenuElem* var2, class_10* var3, int var4, int var5);
+    void blendComponentState(int dst, int src, int scale);
+    void combineComponentState(int dst, int src, int add);
+    void updateComponents(int delta);
+    int updateLevelCollision(int var1);
+    void updateWheelPhysics(int var1);
     void renderEngine(GameCanvas* gameCanvas, int var2, int var3);
     void renderMotoFork(GameCanvas* canvas);
     void renderWheelTires(GameCanvas* canvas);
@@ -97,14 +97,14 @@ public:
     ~GamePhysics();
     GamePhysics(LevelLoader* levelLoader);
     int method_21();
-    void method_22(int var1);
+    void setRenderFlags(int flags);
     void setMode(int mode);
     void setMotoLeague(int league);
     void resetSmth(bool unused);
-    void method_26(bool var1);
+    void shiftBikeVertical(bool up);
     void setRenderMinMaxX(int minX, int maxX);
     void processPointerReleased();
-    void method_30(int var1, int var2);
+    void applyUserInput(int xDir, int yDir);
     void enableGenerateInputAI();
     void disableGenerateInputAI();
     int updatePhysics();
@@ -115,8 +115,8 @@ public:
     void setMinimalScreenWH(int minWH);
     int getCamPosX();
     int getCamPosY();
-    int method_52();
-    void method_53();
+    int getGroundHeight();
+    void snapshotMotoState();
     void renderGame(GameCanvas* gameCanvas);
     void enforceGroundCollision();
     // ===== ДОБАВЛЕННЫЙ МЕТОД =====

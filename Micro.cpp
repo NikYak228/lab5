@@ -8,7 +8,6 @@
 #include "RecordStore.h" // Предполагается наличие этой утилиты
 #include <iostream>
 #include <algorithm>
-#include <cstdio>
 
 bool Micro::field_249 = false;
 
@@ -54,7 +53,7 @@ void Micro::init() {
 
     // 5. Настраиваем параметры физики и графики.
     // Теперь эти вызовы только меняют настройки, не вызывая лишних сбросов.
-    gamePhysics->method_22(0); // линии вместо спрайтов
+    gamePhysics->setRenderFlags(0); // линии вместо спрайтов
     LevelLoader::isEnabledPerspective = false;
     LevelLoader::isEnabledShadows = false;
     gamePhysics->setEnableLookAhead(false);
@@ -70,14 +69,12 @@ void Micro::init() {
 
 void Micro::restart(bool var1) {
     gamePhysics->resetSmth(true);
-    timeMs = 0;
     gameTimeMs = 0;
-    field_246 = 0;
     if (var1) {
         // Так как текста нет, просто делаем задержку
          Time::sleep(1500LL);
     }
-    gameCanvas->method_129();
+    gameCanvas->resetInput();
 }
 
 void Micro::run() {
@@ -89,12 +86,9 @@ void Micro::run() {
     int64_t lastFrameTime = 0L;
 
     while (field_249) {
-        // 1. Это сообщение покажет, что мы входим в итерацию главного цикла
-        std::cout << "--- Main loop iteration ---" << std::endl; 
         
         try {
-            // 2. Это сообщение покажет, что мы готовимся обновить физику
-            std::cout << "Before physics update..." << std::endl;
+
 
             for (int i = numPhysicsLoops; i > 0; --i) {
                 if (field_248) {
@@ -114,15 +108,12 @@ void Micro::run() {
                     break;
                 }
                 else if (gameStatus == 4) {
-                    timeMs = 0L;
                     gameTimeMs = 0L;
                 }
                 field_248 = gameStatus != 4;
             }
 
-            // 3. Если мы видим это, значит, расчет физики ЗАВЕРШИЛСЯ
-            std::cout << "After physics update." << std::endl;
-            gamePhysics->method_53();
+            gamePhysics->snapshotMotoState();
 
             int64_t currentTime = Time::currentTimeMillis();
             if (currentTime - lastFrameTime < 30L) {
@@ -130,11 +121,10 @@ void Micro::run() {
             }
             lastFrameTime = currentTime;
             
-            // 4. Готовимся к отрисовке
-            std::cout << "Calling repaint..." << std::endl;
-            gameCanvas->repaint(); 
+            // Рисуем кадр
+            gameCanvas->repaint();
             gameCanvas->handleEventsAndPresent();
-           std::cout << "--- End of Frame. Looping again... ---" << std::endl; // <-- ДОБАВЬТЕ ЭТУ СТРОКУ
+
         } catch (const std::exception& e) {
             std::cerr << "Error in game loop: " << e.what() << std::endl;
             continue;
