@@ -15,50 +15,43 @@ Canvas::Canvas()
 
 Canvas::~Canvas() = default;
 
-int Canvas::getWidth()
-{
+int Canvas::getWidth() {
     return impl->getWidth();
 }
 
-int Canvas::getHeight()
-{
+int Canvas::getHeight() {
     return impl->getHeight();
 }
 
-void Canvas::setWindowTitle(const std::string& title)
-{
+void Canvas::setWindowTitle(const std::string& title) {
     impl->setWindowTitle(title);
 }
 
-bool Canvas::isShown()
-{
+bool Canvas::isShown() {
     return true;
 }
 
-CanvasImpl* Canvas::getCanvasImpl()
-{
+CanvasImpl* Canvas::getCanvasImpl() {
     return impl.get();
 }
 
-void Canvas::repaint()
-{
-    // Готовит кадр для отрисовки
+void Canvas::repaint() {
+    // Подготовка кадра: вызываем пользовательский метод paint
     paint(graphics.get());
 }
 
-void Canvas::handleEventsAndPresent()
-{
-    // Обрабатывает события и выводит кадр на экран
+void Canvas::handleEventsAndPresent() {
+    // 1. Обработка событий SDL (клавиатура, мышь, окно)
     impl->processEvents();
-    impl->repaint(); // Этот repaint из CanvasImpl, вызывает SDL_RenderPresent
+    // 2. Отображение кадра (SDL_RenderPresent)
+    impl->repaint(); 
 }
 
-void Canvas::serviceRepaints()
-{
+void Canvas::serviceRepaints() {
+    // Заглушка
 }
 
-int Canvas::getGameAction(int keyCode)
-{
+int Canvas::getGameAction(int keyCode) {
     switch (keyCode) {
     case Keys::UP:
     case Keys::DOWN:
@@ -67,37 +60,32 @@ int Canvas::getGameAction(int keyCode)
     case Keys::FIRE:
         return keyCode;
     default:
-        throw std::runtime_error("getGameAction(" + std::to_string(keyCode) + ") isn't implemented!");
+        throw std::runtime_error("getGameAction(" + std::to_string(keyCode) + ") не реализован!");
     }
 }
 
-void Canvas::removeCommand(Command* command)
-{
+void Canvas::removeCommand(Command* command) {
     currentCommands.erase(command);
 }
 
-void Canvas::addCommand(Command* command)
-{
+void Canvas::addCommand(Command* command) {
     currentCommands.insert(command);
 }
 
-void Canvas::setCommandListener(CommandListener* listener)
-{
+void Canvas::setCommandListener(CommandListener* listener) {
     commandListener = listener;
 }
 
-void Canvas::publicKeyPressed(int keyCode)
-{
+void Canvas::publicKeyPressed(int keyCode) {
     keyPressed(keyCode);
 }
 
-void Canvas::publicKeyReleased(int keyCode)
-{
+void Canvas::publicKeyReleased(int keyCode) {
     keyReleased(keyCode);
 }
 
-void Canvas::pressedEsc()
-{
+void Canvas::pressedEsc() {
+    // Обработка кнопки "Назад" (ESC) для меню и команд
     for (const auto& command : currentCommands) {
         if (command->type == Command::Type::BACK || currentCommands.size() == 1) {
             commandListener->commandAction(command, this);

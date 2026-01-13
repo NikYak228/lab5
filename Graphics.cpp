@@ -1,5 +1,5 @@
 #include "Graphics.h"
-#include "iostream"
+#include <iostream>
 
 Graphics::Graphics(SDL_Renderer* renderer) {
     this->renderer = renderer;
@@ -24,29 +24,32 @@ void Graphics::setClip(int x, int y, int w, int h) {
 }
 
 void Graphics::fillCircle(int x, int y, int radius) {
-    // алгоритм для рисования залитого круга
+    // Простой алгоритм сканирования для залитого круга
     for (int w = 0; w < radius * 2; w++) {
         for (int h = 0; h < radius * 2; h++) {
-            int dx = radius - w; // смещение от центра по x
-            int dy = radius - h; // смещение от центра по y
-            // Если точка внутри круга, рисуем пиксель
+            int dx = radius - w; 
+            int dy = radius - h; 
             if ((dx*dx + dy*dy) <= (radius * radius)) {
                 _putpixel(x + dx, y + dy);
             }
         }
     }
 }
+
 void Graphics::fillRect(int x, int y, int w, int h) {
     SDL_Rect rect { x, y, w, h };
     SDL_RenderFillRect(renderer, &rect);
 }
 
-void Graphics::drawArc(int x, int y, int width, int heigth, int startAngle, int arcAngle) {
-    int xradius = width / 2, yradius = heigth / 2;
-    x += xradius;
+void Graphics::drawArc(int x, int y, int width, int height, int startAngle, int arcAngle) {
+    int xradius = width / 2;
+    int yradius = height / 2;
+    x += xradius; // Сдвиг к центру
     y += yradius;
+    
     if (xradius == 0 && yradius == 0) return;
 
+    // Рисуем дугу сегментами линий
     for (int angle = startAngle; angle < startAngle + arcAngle; angle++) {
         drawLine(
             x + int(xradius * cos(angle * PI_CONV)),

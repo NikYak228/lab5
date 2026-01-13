@@ -5,6 +5,12 @@
 #include <fstream>
 #include <cstdarg>
 
+/**
+ * Logger
+ * 
+ * Простая система логгирования в файл и консоль.
+ * Поддерживает уровни важности и категории.
+ */
 class Logger {
 public:
     enum Level {
@@ -22,7 +28,7 @@ private:
     static std::ofstream logFile;
 };
 
-// Макросы для удобства
+// Макросы для удобства использования
 #define LOG_INFO(cat, fmt, ...) Logger::log(Logger::INFO, cat, fmt, ##__VA_ARGS__)
 #define LOG_WARN(cat, fmt, ...) Logger::log(Logger::WARNING, cat, fmt, ##__VA_ARGS__)
 #define LOG_ERR(cat, fmt, ...)  Logger::log(Logger::ERROR_LVL, cat, fmt, ##__VA_ARGS__)
