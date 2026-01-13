@@ -3,20 +3,32 @@
 #include <stdexcept>
 #include <iostream>
 #include "Micro.h"
+#include "Logger.h"
 
+// Точка входа в программу
 int main(int argc, char** argv)
 {
-    std::cout << "main: Program started." << std::endl; 
+    // Инициализация системы логгирования в файл game_log.txt
+    Logger::init("game_log.txt");
+    LOG_INFO("SYS", "Программа запущена (main).");
+    
     try {
-        std::cout << "main: Creating Micro..." << std::endl; 
+        std::cout << "main: Создание экземпляра Micro..." << std::endl; 
         std::unique_ptr<Micro> micro = std::make_unique<Micro>();
-        std::cout << "main: Micro created. Starting app..." << std::endl;
+        
+        std::cout << "main: Micro создан. Запуск приложения..." << std::endl;
         micro->startApp(argc, argv);
-        std::cout << "main: startApp finished." << std::endl; 
+        
+        std::cout << "main: Выполнение startApp завершено." << std::endl; 
     } catch (const std::exception& e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
+        // Ловим любые стандартные исключения, возникшие в процессе работы
+        LOG_ERR("SYS", "Исключение: %s", e.what());
+        std::cerr << "Критическая ошибка: " << e.what() << std::endl;
+        Logger::close();
         return EXIT_FAILURE;
     }
-    std::cout << "main: Program finished." << std::endl; 
+
+    LOG_INFO("SYS", "Программа завершена корректно.");
+    Logger::close();
     return EXIT_SUCCESS;
 }
