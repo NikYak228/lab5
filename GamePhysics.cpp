@@ -1110,6 +1110,7 @@ int GamePhysics::updateLevelCollision(int componentIndex) {
         if (collisionResult == 0 && headVisible && isInverted) {
           LOG_PHYS("CRASH DETECTED! HeadY=%d AvgWheelY=%d", component->yF16, avgWheelY);
           isCrashed = true;
+          return 2; // Allow overlap to trigger crash
         }
       }
 
