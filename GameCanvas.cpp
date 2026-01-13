@@ -78,7 +78,8 @@ void GameCanvas::drawGame(Graphics* g) {
     // --- HUD (Интерфейс) ---
     // Отрисовка режима управления (AI / Manual)
     std::string modeText = gamePhysics->isGenerateInputAI ? "AI" : "MAN";
-    drawVectorString(modeText, 10, 10, 2);
+    // Рисуем текст (без черного фона, как просил пользователь)
+    drawVectorString(modeText, 15, 15, 2);
 
     graphics = nullptr;
 }
@@ -106,38 +107,12 @@ void GameCanvas::drawVectorChar(char c, int start_x, int start_y, int scale) {
 
     const auto& strokes = vectorFont.at(c);
     
-    // Смещение HUD, чтобы он не двигался вместе с камерой (фиксированный на экране)
-    // Но drawLine использует addDx/addDy! 
-    // Нам нужно рисовать HUD в экранных координатах.
-    // drawLine прибавляет dx/dy.
-    // Чтобы рисовать в экранных, нужно вычесть dx/dy.
-    
-    int hudOffsetX = -dx;
-    int hudOffsetY = -dy; 
-    // dy инвертирован в addDy: return -y + dy.
-    // y_screen = -y_world + dy.
-    // y_world = dy - y_screen.
-    // Если мы хотим y_screen = 10.
-    // y_world = dy - 10.
-    
-    // start_y - экранная координата Y (сверху вниз).
-    // addDy ожидает Y "снизу вверх" (мировой).
-    // Это сложно. Проще добавить метод drawLineScreen.
-    // Но пока используем хак с отменой трансформации.
-    
-    // Или просто временно сбросим dx/dy?
+    // Хак для рисования HUD в экранных координатах
     int savedDx = dx;
     int savedDy = dy;
-    dx = 0; dy = 0; // Сброс камеры для HUD
+    dx = 0; dy = 0; // Сброс камеры
     
-    // Но постойте, addDy инвертирует Y.
-    // addDy(y) = -y + 0 = -y.
-    // SDL рисует Y вниз.
-    // Если я хочу нарисовать в (10, 10).
-    // drawLine(10, -10) -> addDy(-10) -> -(-10) = 10.
-    // То есть для экранных координат нужно передавать отрицательный Y?
-    
-    int screen_y = -start_y;
+    int screen_y = -start_y; // Инвертируем Y, так как addDy инвертирует его обратно
 
     for (const auto& stroke : strokes) {
         if (stroke.size() < 2) continue;
@@ -147,18 +122,12 @@ void GameCanvas::drawVectorChar(char c, int start_x, int start_y, int scale) {
             const auto& p2 = stroke[i + 1];
 
             int x1 = start_x + p1.x * scale;
-            int y1 = screen_y - p1.y * scale; // Y растет вниз в шрифте, но вверх в addDy?
-            // Шрифт: (0,0) top-left. (0,5) bottom-left.
-            // addDy(-y): y=0 -> 0. y=5 -> -5.
-            // SDL Y: 0 -> 0. 5 -> 5.
-            // Если screen_y = -10.
-            // Point(0,0) -> y1 = -10. addDy(-10) = 10. Correct.
-            // Point(0,5) -> y1 = -10 - 5 = -15. addDy(-15) = 15. Correct.
-            
+            int y1 = screen_y - p1.y * scale; 
             int x2 = start_x + p2.x * scale;
             int y2 = screen_y - p2.y * scale;
 
-            graphics->drawLine(x1, y1, x2, y2);
+            // Используем this->drawLine, чтобы применилась логика addDy (инверсия Y)
+            this->drawLine(x1, y1, x2, y2);
         }
     }
     

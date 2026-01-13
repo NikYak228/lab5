@@ -6,46 +6,41 @@
 #include <vector>
 #include <cmath>
 
-// Stub or Real? We will link real files.
-// But we need to initialize Logger.
-
+/**
+ * Тест генератора уровней.
+ * Проверяет корректность процедурной генерации в дзен-режиме.
+ */
 int main() {
     Logger::init("test_gen.log");
     
     LevelLoader loader;
     LevelGenerator generator;
-    // GameLevel is managed by LevelLoader
     GameLevel* level = new GameLevel();
     
-    // Wire them up
+    // Связываем компоненты
     loader.gameLevel = level;
     
-    // 1. Test Zen Mode
-    std::cout << "Testing Zen Mode Generation..." << std::endl;
+    // 1. Тест бесконечной генерации
+    std::cout << "Тестирование генерации в Дзен-режиме..." << std::endl;
     
-    // loadLevel(loader, mode, levelId)
     // MODE_ZEN_ENDLESS = 1
     generator.loadLevel(&loader, 1, 0); 
     
-    // Check initial points
-    std::cout << "Initial points: " << level->pointsCount << std::endl;
+    std::cout << "Начальное количество точек: " << level->pointsCount << std::endl;
     
-    // Simulate moving forward by updating Zen
-    // updateZen checks (lastX - cameraX < 4000)
-    // We need to advance cameraX to force generation.
-    // lastX starts around 0 or 500.
-    
+    // Симуляция движения вперед
     int cameraX = 0;
     for (int step = 0; step < 100; ++step) {
-        cameraX += 1000; // Move camera forward
-        generator.updateZen(&loader, cameraX);
+        cameraX += 1000; // Двигаем камеру
+        generator.updateZen(&loader, cameraX); // Генератор должен добавлять точки
     }
     
     int points = level->pointsCount;
-    std::cout << "Generated " << points << " points after simulation." << std::endl;
+    std::cout << "Сгенерировано " << points << " точек после симуляции." << std::endl;
     
     bool wallFound = false;
     
+    // Проверка геометрии на наличие разрывов или вертикальных стен
     for (int i = 0; i < points - 1; ++i) {
         int x1 = level->getPointX(i);
         int y1 = level->getPointY(i);
@@ -55,27 +50,23 @@ int main() {
         int dx = x2 - x1;
         int dy = y2 - y1;
         
-        // Check for backwards or vertical wall
+        // Проверка движения назад или строго вертикально
         if (dx <= 0) {
-            std::cout << "WALL FOUND (dx<=0) at index " << i 
+            std::cout << "ОБНАРУЖЕНА СТЕНА (dx<=0) в индексе " << i 
                       << ": (" << x1 << "," << y1 << ") -> (" << x2 << "," << y2 << ")" << std::endl;
             wallFound = true;
         } else {
              double slope = (double)dy / dx;
-             // dy positive means DOWN. dy negative means UP.
-             // "Wall" is usually UP (negative dy) and steep.
-             // Or maybe DOWN (positive dy) if it's a cliff?
-             
-             if (std::abs(slope) > 5.0) { // Very steep ( > 78 degrees)
-                 std::cout << "STEEP SLOPE found at index " << i 
+             // Слишком крутой склон может быть проблемой для AI
+             if (std::abs(slope) > 5.0) { 
+                 std::cout << "КРУТОЙ СКЛОН в индексе " << i 
                            << ": (" << x1 << "," << y1 << ") -> (" << x2 << "," << y2 << ") Slope: " << slope << std::endl;
-                 // wallFound = true; 
              }
         }
     }
     
     if (!wallFound) {
-        std::cout << "No vertical/backward walls found." << std::endl;
+        std::cout << "Вертикальных или обратных стен не обнаружено. Тест пройден." << std::endl;
     }
     
     Logger::close();

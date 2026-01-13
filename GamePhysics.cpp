@@ -362,7 +362,7 @@ void GamePhysics::applyUserInput(int xDir, int yDir) {
 }
 
 void GamePhysics::enableGenerateInputAI() {
-  resetSmth(true);
+  // resetSmth(true);
   isGenerateInputAI = true;
 }
 
