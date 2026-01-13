@@ -8,22 +8,26 @@
 #include "Logger.h"
 #include <algorithm>
 #include <iostream>
+#include <cmath>
 
+// --- Конструктор ---
 GamePhysics::GamePhysics(LevelLoader *levelLoader) {
-  LOG_PHYS("GamePhysics constructor called.");
+  LOG_PHYS("GamePhysics: Конструктор вызван.");
   primaryStateIndex = 0;
   secondaryStateIndex = 1;
 
+  // Инициализация частей мотоцикла
   for (int i = 0; i < 6; ++i) {
     motoComponents[i] = std::make_unique<MotoComponent>();
   }
-  // ... (rest of constructor is implicitly preserved by logical flow, but I need to be careful with replace)
-  // Since I am replacing the top of the file, I will just rewrite the constructor part I see.
   
+  // Сброс флагов и параметров
   restartCounter = 0;
   gameMode = 0;
   useSpriteGraphics = false;
   isRenderMotoWithSprites = false;
+  
+  // Сброс ввода
   isInputAcceleration = false;
   isInputBreak = false;
   isInputBack = false;
@@ -32,6 +36,7 @@ GamePhysics::GamePhysics(LevelLoader *levelLoader) {
   isInputDown = false;
   isInputLeft = false;
   isInputRight = false;
+  
   inAir = false;
   trackStarted = false;
   isEnableLookAhead = true;
@@ -42,7 +47,7 @@ GamePhysics::GamePhysics(LevelLoader *levelLoader) {
   cameraParams = {{45875}, {32768}, {52428}};
   this->levelLoader = levelLoader;
   
-  // Инициализация AI системы
+  // Инициализация AI системы и генератора
   aiController = std::make_unique<AIController>();
   levelGenerator = std::make_unique<LevelGenerator>();
   currentLevelMode = LevelMode::MANUAL;
@@ -53,6 +58,8 @@ GamePhysics::GamePhysics(LevelLoader *levelLoader) {
   snapshotMotoState();
   isCrashed = false;
 }
+
+// --- Управление настройками ---
 
 int GamePhysics::getRenderMode() {
   if (useSpriteGraphics && isRenderMotoWithSprites) {
@@ -82,65 +89,66 @@ void GamePhysics::setMode(int mode) {
   case 1:
   default:
     wheelBase = 1310;
-    gravityF16 = 1638400;
+    gravityF16 = 1638400; // Стандартная гравитация
     setMotoLeague(1);
   }
 }
 
 void GamePhysics::setMotoLeague(int league) {
   curentMotoLeague = league;
+  
+  // Базовые настройки подвески
   suspensionFront = 45875;
   suspensionBack = 13107;
   forkLength = 39321;
   massFactor = 1600000;
   dampingF16 = 262144;
   frictionCoeff = 6553;
+  
   switch (league) {
   case 0:
   default:
-    motoParam1 = 18000;
-    motoParam2 = 18000;
-    motoParam3 = 1200000;   // GOD MODE: Safe Max Speed (No tunneling)
-    motoParam4 = 200000000; // GOD MODE: Torque
-    motoParam5 = 20000000;  // GOD MODE: Accel
-    motoParam6 = 327;
-    motoParam7 = 0;
-    motoParam8 = 32768;
-    motoParam9 = 327680;
-    motoParam10 = 24660800; // Harder springs
+    torqueFront = 18000;
+    torqueRear = 18000;
+    maxAngularVelocity = 1200000;   // GOD MODE: Безопасная макс. скорость
+    maxTorque = 200000000;          // GOD MODE: Крутящий момент
+    accelStep = 20000000;           // GOD MODE: Ускорение
+    brakeDamping = 327;
+    brakeForce = 0;
+    airControlForce = 32768;
+    airControlLimit = 327680;
+    springStiffness = 24660800; // Жесткие пружины
     break;
   case 1:
-    motoParam1 = 32768;
-    motoParam2 = 32768;
-    motoParam3 = 2500000;   // Еще больше увеличена максимальная скорость для
-                            // прохождения петли
-    motoParam4 = 120000000; // Еще больше увеличена максимальная мощность
-    motoParam5 =
-        8000000; // Еще больше увеличено ускорение для быстрого набора скорости
-    motoParam6 = 6553;
-    motoParam7 = 26214;
-    motoParam8 = 26214;
-    motoParam9 = 327680;
-    motoParam10 = 19660800;
+    torqueFront = 32768;
+    torqueRear = 32768;
+    maxAngularVelocity = 2500000;   // Увеличена для петли
+    maxTorque = 120000000; 
+    accelStep = 8000000;            // Быстрый набор скорости
+    brakeDamping = 6553;
+    brakeForce = 26214;
+    airControlForce = 26214;
+    airControlLimit = 327680;
+    springStiffness = 19660800;
     break;
 
   case 2:
     // --- Двигатель на максимуме ---
-    motoParam3 = 2200000;  // Очень высокая макс. скорость вращения
-    motoParam4 = 90000000; // Огромный потолок мощности
-    motoParam5 = 5500000;  // Очень резкое ускорение
+    maxAngularVelocity = 2200000;
+    maxTorque = 90000000;
+    accelStep = 5500000;
 
     // --- Шасси и управление ---
-    massFactor = 1350000; // Слегка уменьшаем массу, чтобы байк был "легче"
-    motoParam8 = 45000;   // Очень высокий контроль в воздухе для трюков
+    massFactor = 1350000; // Легкий байк
+    airControlForce = 45000; // Высокий контроль в воздухе
 
     // --- Остальные параметры ---
-    motoParam1 = 32768;
-    motoParam2 = 32768;
-    motoParam6 = 6553;
-    motoParam7 = 26214;
-    motoParam9 = 327680;
-    motoParam10 = 21626880;
+    torqueFront = 32768;
+    torqueRear = 32768;
+    brakeDamping = 6553;
+    brakeForce = 26214;
+    airControlLimit = 327680;
+    springStiffness = 21626880;
     suspensionFront = 45875;
     suspensionBack = 13107;
     forkLength = 39321;
@@ -149,20 +157,18 @@ void GamePhysics::setMotoLeague(int league) {
     curentMotoLeague = league;
     break;
   case 3: // Демонстрационный режим "Наглядная Подвеска"
-    // --- Двигатель: тяга есть, но без мгновенного переворота ---
-    motoParam3 = 1400000;  // максимум угловой скорости колеса
-    motoParam4 = 90000000; // потолок крутящего момента
-    motoParam5 = 2400000;  // шаг прироста момента — резво, но мягче
+    maxAngularVelocity = 1400000;
+    maxTorque = 90000000;
+    accelStep = 2400000;
 
     // --- Шасси и Подвеска ---
-    massFactor = 1850000;   // тяжелее для устойчивости
-    motoParam10 = 18000000; // мягкие пружины
-    dampingF16 = 340000;    // демпфер поглощает раскачку
-    frictionCoeff =
-        12500; // сильнее торможение двигателя — меньше chance перекрутить
+    massFactor = 1850000;   // Тяжелее
+    springStiffness = 18000000; // Мягкие пружины
+    dampingF16 = 340000;    // Сильное демпфирование
+    frictionCoeff = 12500; // Сильное торможение двигателем
 
     // --- Управление в воздухе ---
-    motoParam8 = 26000; // ещё плавнее контроль в полёте
+    airControlForce = 26000;
 
     // Остальные параметры
     curentMotoLeague = league;
@@ -170,11 +176,11 @@ void GamePhysics::setMotoLeague(int league) {
     suspensionBack = 13107;
     forkLength = 39321;
     frictionCoeff = 6553;
-    motoParam1 = 32768;
-    motoParam2 = 32768;
-    motoParam6 = 6553;
-    motoParam7 = 26214;
-    motoParam9 = 327680;
+    torqueFront = 32768;
+    torqueRear = 32768;
+    brakeDamping = 6553;
+    brakeForce = 26214;
+    airControlLimit = 327680;
     break;
   }
 }
@@ -192,8 +198,6 @@ void GamePhysics::resetSmth(bool unused) {
   isGroundColliding = false;
   inAir = false;
   trackStarted = false;
-  // НЕ сбрасываем isGenerateInputAI здесь - он устанавливается в setLevelMode
-  // isGenerateInputAI = false; // УДАЛЕНО - сохраняем значение из setLevelMode
   atStart = false;
   cameraToggle = false;
 
@@ -201,8 +205,7 @@ void GamePhysics::resetSmth(bool unused) {
       motorcycleParts[2]->motoComponents[5]->xF16 + 98304 - const175_1_half[0],
       motorcycleParts[1]->motoComponents[5]->xF16 - 98304 + const175_1_half[0]);
 
-  // Запоминаем базовое расстояние между колесами (для контроля схлопывания
-  // рамы)
+  // Запоминаем базовое расстояние между колесами
   initialWheelSeparationF16 = calcVectorLengthF16(
       motorcycleParts[1]->motoComponents[primaryStateIndex]->xF16 -
           motorcycleParts[2]->motoComponents[primaryStateIndex]->xF16,
@@ -220,6 +223,7 @@ void GamePhysics::shiftBikeVertical(bool up) {
   }
 }
 
+// --- Инициализация байка ---
 void GamePhysics::setupBike(int startX, int startY) {
   if (motorcycleParts.empty()) {
     motorcycleParts = std::vector<std::unique_ptr<BikePart>>(6);
@@ -230,47 +234,47 @@ void GamePhysics::setupBike(int startX, int startY) {
   }
 
   int var4 = 0;
-  int8_t var5 = 0;
+  int8_t connectionTypeLocal = 0;
   int var6 = 0;
   int var7 = 0;
 
   int i;
   for (i = 0; i < 6; ++i) {
-    short var8 = 0;
+    short angleOffset = 0;
     switch (i) {
-    case 0:
-      var5 = 1;
+    case 0: // Шасси
+      connectionTypeLocal = 1;
       var4 = 360448;
       var6 = 0;
       var7 = 0;
       break;
-    case 1:
-      var5 = 0;
+    case 1: // Переднее колесо
+      connectionTypeLocal = 0;
       var4 = 98304;
       var6 = 229376;
       var7 = 0;
       break;
-    case 2:
-      var5 = 0;
+    case 2: // Заднее колесо
+      connectionTypeLocal = 0;
       var4 = 360448;
       var6 = -229376;
       var7 = 0;
-      var8 = 21626;
+      angleOffset = 21626;
       break;
-    case 3:
-      var5 = 1;
+    case 3: // Амортизатор задний
+      connectionTypeLocal = 1;
       var4 = 229376;
       var6 = 131072;
       var7 = 196608;
       break;
-    case 4:
-      var5 = 1;
+    case 4: // Амортизатор передний
+      connectionTypeLocal = 1;
       var4 = 229376;
       var6 = -131072;
       var7 = 196608;
       break;
-    case 5:
-      var5 = 2;
+    case 5: // Голова водителя
+      connectionTypeLocal = 2;
       var4 = 294912;
       var6 = 0;
       var7 = 327680;
@@ -281,18 +285,20 @@ void GamePhysics::setupBike(int startX, int startY) {
     }
 
     motorcycleParts[i]->reset();
-    motorcycleParts[i]->connectionLengthF16 = const175_1_half[var5];
-    motorcycleParts[i]->connectionType = var5;
+    motorcycleParts[i]->connectionLengthF16 = const175_1_half[connectionTypeLocal];
+    motorcycleParts[i]->connectionType = connectionTypeLocal;
+    // Расчет прочности подвески на основе массы
     motorcycleParts[i]->suspensionStrength =
         (int)((int64_t)((int)(281474976710656L / (int64_t)var4 >> 16)) *
                   (int64_t)massFactor >>
               16);
+    // Начальные координаты
     motorcycleParts[i]->motoComponents[primaryStateIndex]->xF16 = startX + var6;
     motorcycleParts[i]->motoComponents[primaryStateIndex]->yF16 =
         startY + var7 + 500000;
     motorcycleParts[i]->motoComponents[5]->xF16 = startX + var6;
     motorcycleParts[i]->motoComponents[5]->yF16 = startY + var7 + 500000;
-    motorcycleParts[i]->angleOffsetF16 = var8;
+    motorcycleParts[i]->angleOffsetF16 = angleOffset;
   }
 
   for (i = 0; i < 10; ++i) {
@@ -301,10 +307,11 @@ void GamePhysics::setupBike(int startX, int startY) {
     }
 
     springComponents[i]->setToZeros();
-    springComponents[i]->xF16 = motoParam10;
+    springComponents[i]->xF16 = springStiffness;
     springComponents[i]->angleF16 = dampingF16;
   }
 
+  // Настройка параметров пружин (жесткость, длина и т.д.)
   springComponents[0]->yF16 = 229376;
   springComponents[1]->yF16 = 229376;
   springComponents[2]->yF16 = 236293;
@@ -315,17 +322,20 @@ void GamePhysics::setupBike(int startX, int startY) {
   springComponents[7]->yF16 = 185363;
   springComponents[8]->yF16 = 185363;
   springComponents[9]->yF16 = 327680;
+  
   springComponents[5]->angleF16 = (int)((int64_t)dampingF16 * 45875L >> 16);
-  springComponents[6]->xF16 = (int)(6553L * (int64_t)motoParam10 >> 16);
-  springComponents[5]->xF16 = (int)(6553L * (int64_t)motoParam10 >> 16);
-  springComponents[9]->xF16 = (int)(72089L * (int64_t)motoParam10 >> 16);
-  springComponents[8]->xF16 = (int)(72089L * (int64_t)motoParam10 >> 16);
-  springComponents[7]->xF16 = (int)(72089L * (int64_t)motoParam10 >> 16);
+  springComponents[6]->xF16 = (int)(6553L * (int64_t)springStiffness >> 16);
+  springComponents[5]->xF16 = (int)(6553L * (int64_t)springStiffness >> 16);
+  springComponents[9]->xF16 = (int)(72089L * (int64_t)springStiffness >> 16);
+  springComponents[8]->xF16 = (int)(72089L * (int64_t)springStiffness >> 16);
+  springComponents[7]->xF16 = (int)(72089L * (int64_t)springStiffness >> 16);
 }
 
 void GamePhysics::setRenderMinMaxX(int minX, int maxX) {
   levelLoader->setMinMaxX(minX, maxX);
 }
+
+// --- Обработка ввода ---
 
 void GamePhysics::processPointerReleased() {
   isInputUp = isInputDown = isInputRight = isInputLeft = false;
@@ -359,13 +369,13 @@ void GamePhysics::enableGenerateInputAI() {
 void GamePhysics::disableGenerateInputAI() { isGenerateInputAI = false; }
 
 void GamePhysics::setInputFromAI() {
-  // Вызываем логику AI вместо старой заглушки
+  // Вызываем логику AI
   if (aiController) {
     aiController->update(this);
   } else {
     static int warnCount = 0;
-    if (warnCount++ % 300 == 0) { // Логируем каждые 5 секунд
-      std::cout << "[GamePhysics] WARNING: isGenerateInputAI=true but aiController is null!" << std::endl;
+    if (warnCount++ % 300 == 0) { 
+      std::cout << "[GamePhysics] WARNING: isGenerateInputAI=true но aiController is null!" << std::endl;
     }
   }
 }
@@ -383,228 +393,214 @@ void GamePhysics::setLevelMode(LevelMode mode, int levelId) {
         levelGenerator->loadLevel(levelLoader, modeInt, levelId);
     }
     
-    resetSmth(true); // Рестарт физики байка
+    resetSmth(true); 
     
-    // ВАЖНО: Восстанавливаем флаг AI после resetSmth, так как он мог быть сброшен
+    // Восстанавливаем флаг AI после сброса
     isGenerateInputAI = (mode != LevelMode::MANUAL);
-    
-    std::cout << "[GamePhysics] After resetSmth: isGenerateInputAI=" 
-              << (isGenerateInputAI ? "true" : "false") << std::endl;
-    
     aiRestartTimer = 0;
 }
 
+// --- Физика Байка (Engine, Control) ---
+
 void GamePhysics::updateBikePhysics() {
   if (!isCrashed) {
-    int var1 = motorcycleParts[1]->motoComponents[primaryStateIndex]->xF16 -
+    // Рассчитываем вектор между колесами
+    int vecX = motorcycleParts[1]->motoComponents[primaryStateIndex]->xF16 -
                motorcycleParts[2]->motoComponents[primaryStateIndex]->xF16;
-    int var2 = motorcycleParts[1]->motoComponents[primaryStateIndex]->yF16 -
+    int vecY = motorcycleParts[1]->motoComponents[primaryStateIndex]->yF16 -
                motorcycleParts[2]->motoComponents[primaryStateIndex]->yF16;
-    int var3 = calcVectorLengthF16(var1, var2);
+    int vecLen = calcVectorLengthF16(vecX, vecY);
 
-    if (var3 != 0) {
-      double normalized_x = (double)var1 / var3;
-      double normalized_y = (double)var2 / var3;
-      var1 = (int)(normalized_x * 65536.0);
-      var2 = (int)(normalized_y * 65536.0);
+    if (vecLen != 0) {
+      double normalized_x = (double)vecX / vecLen;
+      double normalized_y = (double)vecY / vecLen;
+      vecX = (int)(normalized_x * 65536.0);
+      vecY = (int)(normalized_y * 65536.0);
     }
 
-    if (isInputAcceleration && engineTorqueF16 >= -motoParam4) {
-      engineTorqueF16 -= motoParam5;
+    // Применяем ускорение
+    if (isInputAcceleration && engineTorqueF16 >= -maxTorque) {
+      engineTorqueF16 -= accelStep;
     }
 
+    // Применяем торможение
     if (isInputBreak) {
       engineTorqueF16 = 0;
+      // Демпфирование угловой скорости колес
       motorcycleParts[1]->motoComponents[primaryStateIndex]->angularVelocity =
           (int)((int64_t)motorcycleParts[1]
                         ->motoComponents[primaryStateIndex]
                         ->angularVelocity *
-                    (int64_t)(65536 - motoParam6) >>
+                    (int64_t)(65536 - brakeDamping) >>
                 16);
       motorcycleParts[2]->motoComponents[primaryStateIndex]->angularVelocity =
           (int)((int64_t)motorcycleParts[2]
                         ->motoComponents[primaryStateIndex]
                         ->angularVelocity *
-                    (int64_t)(65536 - motoParam6) >>
+                    (int64_t)(65536 - brakeDamping) >>
                 16);
+      
+      // Остановка колес при малой скорости
       if (motorcycleParts[1]
               ->motoComponents[primaryStateIndex]
               ->angularVelocity < 6553) {
-        motorcycleParts[1]->motoComponents[primaryStateIndex]->angularVelocity =
-            0;
+        motorcycleParts[1]->motoComponents[primaryStateIndex]->angularVelocity = 0;
       }
 
       if (motorcycleParts[2]
               ->motoComponents[primaryStateIndex]
               ->angularVelocity < 6553) {
-        motorcycleParts[2]->motoComponents[primaryStateIndex]->angularVelocity =
-            0;
+        motorcycleParts[2]->motoComponents[primaryStateIndex]->angularVelocity = 0;
       }
     }
 
-    motorcycleParts[0]->suspensionStrength =
-        (int)(11915L * (int64_t)massFactor >> 16);
-    motorcycleParts[4]->suspensionStrength =
-        (int)(18724L * (int64_t)massFactor >> 16);
-    motorcycleParts[3]->suspensionStrength =
-        (int)(18724L * (int64_t)massFactor >> 16);
-    motorcycleParts[1]->suspensionStrength =
-        (int)(43690L * (int64_t)massFactor >> 16);
-    motorcycleParts[2]->suspensionStrength =
-        (int)(11915L * (int64_t)massFactor >> 16);
-    motorcycleParts[5]->suspensionStrength =
-        (int)(14563L * (int64_t)massFactor >> 16);
+    // Настройка жесткости подвески (динамическая, зависит от нагрузки)
+    motorcycleParts[0]->suspensionStrength = (int)(11915L * (int64_t)massFactor >> 16);
+    motorcycleParts[4]->suspensionStrength = (int)(18724L * (int64_t)massFactor >> 16);
+    motorcycleParts[3]->suspensionStrength = (int)(18724L * (int64_t)massFactor >> 16);
+    motorcycleParts[1]->suspensionStrength = (int)(43690L * (int64_t)massFactor >> 16);
+    motorcycleParts[2]->suspensionStrength = (int)(11915L * (int64_t)massFactor >> 16);
+    motorcycleParts[5]->suspensionStrength = (int)(14563L * (int64_t)massFactor >> 16);
+    
+    // Перенос веса при наклонах (ввод Back/Forward)
     if (isInputBack) {
-      motorcycleParts[0]->suspensionStrength =
-          (int)(18724L * (int64_t)massFactor >> 16);
-      motorcycleParts[4]->suspensionStrength =
-          (int)(14563L * (int64_t)massFactor >> 16);
-      motorcycleParts[3]->suspensionStrength =
-          (int)(18724L * (int64_t)massFactor >> 16);
-      motorcycleParts[1]->suspensionStrength =
-          (int)(43690L * (int64_t)massFactor >> 16);
-      motorcycleParts[2]->suspensionStrength =
-          (int)(10082L * (int64_t)massFactor >> 16);
+      motorcycleParts[0]->suspensionStrength = (int)(18724L * (int64_t)massFactor >> 16);
+      motorcycleParts[4]->suspensionStrength = (int)(14563L * (int64_t)massFactor >> 16);
+      motorcycleParts[3]->suspensionStrength = (int)(18724L * (int64_t)massFactor >> 16);
+      motorcycleParts[1]->suspensionStrength = (int)(43690L * (int64_t)massFactor >> 16);
+      motorcycleParts[2]->suspensionStrength = (int)(10082L * (int64_t)massFactor >> 16);
     } else if (isInputForward) {
-      motorcycleParts[0]->suspensionStrength =
-          (int)(18724L * (int64_t)massFactor >> 16);
-      motorcycleParts[4]->suspensionStrength =
-          (int)(18724L * (int64_t)massFactor >> 16);
-      motorcycleParts[3]->suspensionStrength =
-          (int)(14563L * (int64_t)massFactor >> 16);
-      motorcycleParts[1]->suspensionStrength =
-          (int)(26214L * (int64_t)massFactor >> 16);
-      motorcycleParts[2]->suspensionStrength =
-          (int)(11915L * (int64_t)massFactor >> 16);
+      motorcycleParts[0]->suspensionStrength = (int)(18724L * (int64_t)massFactor >> 16);
+      motorcycleParts[4]->suspensionStrength = (int)(18724L * (int64_t)massFactor >> 16);
+      motorcycleParts[3]->suspensionStrength = (int)(14563L * (int64_t)massFactor >> 16);
+      motorcycleParts[1]->suspensionStrength = (int)(26214L * (int64_t)massFactor >> 16);
+      motorcycleParts[2]->suspensionStrength = (int)(11915L * (int64_t)massFactor >> 16);
     }
 
+    // Управление в воздухе (вращение байка)
     if (isInputBack || isInputForward) {
-      int var4 = -var2;
-      MotoComponent *var10000;
-      int var6;
-      int var7;
-      int var8;
-      int var9;
-      int var10;
-      int var11;
-      if (isInputBack && wheelBalance > -motoParam9) {
-        var6 = 65536;
+      int perpX = -vecY;
+      // int perpY = vecX; // unused locally, but logic implied
+      
+      MotoComponent *comp;
+      int scale;
+      int force;
+      int forceX;
+      int forceY;
+      int forceX2;
+      int forceY2;
+
+      // Логика вращения НАЗАД
+      if (isInputBack && wheelBalance > -airControlLimit) {
+        scale = 65536;
         if (wheelBalance < 0) {
-          var6 =
-              (int)(((int64_t)(motoParam9 - (wheelBalance < 0 ? -wheelBalance
-                                                              : wheelBalance))
-                     << 32) /
-                        (int64_t)motoParam9 >>
-                    16);
+          scale = (int)(((int64_t)(airControlLimit - (wheelBalance < 0 ? -wheelBalance : wheelBalance)) << 32) /
+                        (int64_t)airControlLimit >> 16);
         }
 
-        var7 = (int)((int64_t)motoParam8 * (int64_t)var6 >> 16);
-        var8 = (int)((int64_t)var4 * (int64_t)var7 >> 16);
-        var9 = (int)((int64_t)var1 * (int64_t)var7 >> 16);
-        var10 = (int)((int64_t)var1 * (int64_t)var7 >> 16);
-        var11 = (int)((int64_t)var2 * (int64_t)var7 >> 16);
+        force = (int)((int64_t)airControlForce * (int64_t)scale >> 16);
+        forceX = (int)((int64_t)perpX * (int64_t)force >> 16);
+        forceY = (int)((int64_t)vecX * (int64_t)force >> 16);
+        forceX2 = (int)((int64_t)vecX * (int64_t)force >> 16);
+        forceY2 = (int)((int64_t)vecY * (int64_t)force >> 16);
+        
+        // Обновляем угол наклона водителя
         if (tiltAngleF16 > 32768) {
           tiltAngleF16 = tiltAngleF16 - 1638 < 0 ? 0 : tiltAngleF16 - 1638;
         } else {
           tiltAngleF16 = tiltAngleF16 - 3276 < 0 ? 0 : tiltAngleF16 - 3276;
         }
 
-        var10000 = motorcycleParts[4]->motoComponents[primaryStateIndex].get();
-        var10000->velX -= var8;
-        var10000 = motorcycleParts[4]->motoComponents[primaryStateIndex].get();
-        var10000->velY -= var9;
-        var10000 = motorcycleParts[3]->motoComponents[primaryStateIndex].get();
-        var10000->velX += var8;
-        var10000 = motorcycleParts[3]->motoComponents[primaryStateIndex].get();
-        var10000->velY += var9;
-        var10000 = motorcycleParts[5]->motoComponents[primaryStateIndex].get();
-        var10000->velX -= var10;
-        var10000 = motorcycleParts[5]->motoComponents[primaryStateIndex].get();
-        var10000->velY -= var11;
+        // Применяем силы к частям тела (голова, плечи)
+        comp = motorcycleParts[4]->motoComponents[primaryStateIndex].get();
+        comp->velX -= forceX;
+        comp = motorcycleParts[4]->motoComponents[primaryStateIndex].get();
+        comp->velY -= forceY;
+        comp = motorcycleParts[3]->motoComponents[primaryStateIndex].get();
+        comp->velX += forceX;
+        comp = motorcycleParts[3]->motoComponents[primaryStateIndex].get();
+        comp->velY += forceY;
+        comp = motorcycleParts[5]->motoComponents[primaryStateIndex].get();
+        comp->velX -= forceX2;
+        comp = motorcycleParts[5]->motoComponents[primaryStateIndex].get();
+        comp->velY -= forceY2;
       }
 
-      if (isInputForward && wheelBalance < motoParam9) {
-        var6 = 65536;
+      // Логика вращения ВПЕРЕД
+      if (isInputForward && wheelBalance < airControlLimit) {
+        scale = 65536;
         if (wheelBalance > 0) {
-          var6 = (int)(((int64_t)(motoParam9 - wheelBalance) << 32) /
-                           (int64_t)motoParam9 >>
-                       16);
+          scale = (int)(((int64_t)(airControlLimit - wheelBalance) << 32) /
+                           (int64_t)airControlLimit >> 16);
         }
 
-        var7 = (int)((int64_t)motoParam8 * (int64_t)var6 >> 16);
-        var8 = (int)((int64_t)var4 * (int64_t)var7 >> 16);
-        var9 = (int)((int64_t)var1 * (int64_t)var7 >> 16);
-        var10 = (int)((int64_t)var1 * (int64_t)var7 >> 16);
-        var11 = (int)((int64_t)var2 * (int64_t)var7 >> 16);
+        force = (int)((int64_t)airControlForce * (int64_t)scale >> 16);
+        forceX = (int)((int64_t)perpX * (int64_t)force >> 16);
+        forceY = (int)((int64_t)vecX * (int64_t)force >> 16);
+        forceX2 = (int)((int64_t)vecX * (int64_t)force >> 16);
+        forceY2 = (int)((int64_t)vecY * (int64_t)force >> 16);
+        
         if (tiltAngleF16 > 32768) {
-          tiltAngleF16 =
-              tiltAngleF16 + 1638 < 65536 ? tiltAngleF16 + 1638 : 65536;
+          tiltAngleF16 = tiltAngleF16 + 1638 < 65536 ? tiltAngleF16 + 1638 : 65536;
         } else {
-          tiltAngleF16 =
-              tiltAngleF16 + 3276 < 65536 ? tiltAngleF16 + 3276 : 65536;
+          tiltAngleF16 = tiltAngleF16 + 3276 < 65536 ? tiltAngleF16 + 3276 : 65536;
         }
 
-        var10000 = motorcycleParts[4]->motoComponents[primaryStateIndex].get();
-        var10000->velX += var8;
-        var10000 = motorcycleParts[4]->motoComponents[primaryStateIndex].get();
-        var10000->velY += var9;
-        var10000 = motorcycleParts[3]->motoComponents[primaryStateIndex].get();
-        var10000->velX -= var8;
-        var10000 = motorcycleParts[3]->motoComponents[primaryStateIndex].get();
-        var10000->velY -= var9;
-        var10000 = motorcycleParts[5]->motoComponents[primaryStateIndex].get();
-        var10000->velX += var10;
-        var10000 = motorcycleParts[5]->motoComponents[primaryStateIndex].get();
-        var10000->velY += var11;
+        comp = motorcycleParts[4]->motoComponents[primaryStateIndex].get();
+        comp->velX += forceX;
+        comp = motorcycleParts[4]->motoComponents[primaryStateIndex].get();
+        comp->velY += forceY;
+        comp = motorcycleParts[3]->motoComponents[primaryStateIndex].get();
+        comp->velX -= forceX;
+        comp = motorcycleParts[3]->motoComponents[primaryStateIndex].get();
+        comp->velY -= forceY;
+        comp = motorcycleParts[5]->motoComponents[primaryStateIndex].get();
+        comp->velX += forceX2;
+        comp = motorcycleParts[5]->motoComponents[primaryStateIndex].get();
+        comp->velY += forceY2;
       }
       return;
     }
 
+    // Возврат водителя в нейтральное положение
     if (tiltAngleF16 < 26214) {
       tiltAngleF16 += 3276;
       return;
     }
-
     if (tiltAngleF16 > 39321) {
       tiltAngleF16 -= 3276;
       return;
     }
-
     tiltAngleF16 = 32768;
   }
 }
 
+// --- Основной цикл обновления ---
+
 int GamePhysics::updatePhysics() {
   // 1. Управление Дзен-генератором
   if (currentLevelMode == LevelMode::ZEN_ENDLESS && !isCrashed && levelGenerator) {
-    // getCamPosX возвращает логические координаты, подходящие для генератора
     levelGenerator->updateZen(levelLoader, getCamPosX());
     checkAndShiftWorld();
   }
 
   // 2. Авто-рестарт при аварии AI
   if (isCrashed && currentLevelMode != LevelMode::MANUAL) {
-    if (++aiRestartTimer > 60) { // Ждем 1 секунду (60 кадров)
-      setLevelMode(currentLevelMode, 0); // Перезагружаем уровень
-      return 0; // Прерываем кадр
+    if (++aiRestartTimer > 60) {
+      setLevelMode(currentLevelMode, 0); 
+      return 0;
     }
   }
 
   // 3. Обработка ввода
   static int inputLogCounter = 0;
   if (isGenerateInputAI) {
-    // AI Управление - AI сам устанавливает флаги
     setInputFromAI();
-    
-    // Логирование флагов управления (каждые 60 кадров)
     if (++inputLogCounter % 60 == 0) {
-      std::cout << "[GamePhysics] Input flags: ACCEL=" << isInputAcceleration
-                << " BRAKE=" << isInputBreak
-                << " BACK=" << isInputBack
-                << " FORWARD=" << isInputForward << std::endl;
+      // Логируем редко, чтобы не засорять консоль
+      // std::cout << "AI Inputs..." << std::endl;
     }
   } else {
-    // Ручное управление из клавиатуры
     isInputAcceleration = isInputUp;
     isInputBreak = isInputDown;
     isInputBack = isInputLeft;
@@ -612,8 +608,9 @@ int GamePhysics::updatePhysics() {
   }
   
   updateBikePhysics();
-  int physicsResult;
-  physicsResult = runPhysicsLoop(wheelBase);
+  
+  int physicsResult = runPhysicsLoop(wheelBase);
+  
   if (physicsResult != 5 && !isGroundColliding) {
     if (isCrashed) {
       return 3;
@@ -624,7 +621,7 @@ int GamePhysics::updatePhysics() {
       return physicsResult;
     }
   } else {
-    return 5;
+    return 5; // Crash/Fail
   }
 }
 
@@ -646,23 +643,25 @@ int GamePhysics::runPhysicsLoop(int maxStep) {
   int targetStep = maxStep;
   int failsafeCounter = 0;
 
+  // Бесконечный цикл с goto (legacy, но работает как бинарный поиск времени столкновения)
 restart:
   if (++failsafeCounter > 2000) {
-    // Если цикл выполняется слишком долго, принудительно выходим
-    return 5; // Возвращаем статус "авария"
+    return 5; // Аварийный выход
   }
 
   int collisionState;
   while (currentStep < maxStep) {
+    // Интегрируем физику на шаг
     updateComponents(targetStep - currentStep);
-    // Проверяем завершение трассы только если мотоцикл на земле (не в воздухе)
-    // Это предотвращает преждевременное завершение при прыжке через финиш
+    
+    // Проверка столкновения
     if (!wasInAir && !inAir && isTrackFinished()) {
-      collisionState = 3;
+      collisionState = 3; // Финиш
     } else {
       collisionState = updateLevelCollision(secondaryStateIndex);
     }
 
+    // Если взлетели
     if (!wasInAir && inAir) {
       if (collisionState != 3) {
         return 2;
@@ -670,15 +669,18 @@ restart:
       return 1;
     }
 
+    // Если нет столкновения
     if (collisionState == 0) {
-      targetStep = (currentStep + targetStep) >> 1;
+      targetStep = (currentStep + targetStep) >> 1; // Уменьшаем шаг
       goto restart;
     }
 
+    // Обработка результата
     if (collisionState == 3) {
       inAir = true;
       targetStep = (currentStep + targetStep) >> 1;
     } else {
+      // Столкновение колеса
       int wheelCollisionResult;
       if (collisionState == 1) {
         do {
@@ -690,6 +692,7 @@ restart:
         } while (wheelCollisionResult != 2);
       }
 
+      // Фиксируем шаг и меняем буферы
       currentStep = targetStep;
       targetStep = maxStep;
       primaryStateIndex = primaryStateIndex == 1 ? 0 : 1;
@@ -697,20 +700,17 @@ restart:
     }
   }
 
-  // Убрали проверку на схлопывание рамы - смерть только от соприкосновения
-  // головы с трассой Проверка головы будет в updateLevelCollision
-
   return 0;
 }
 
-void GamePhysics::applyForces(int componentIndex) {
-  // Определяем, находимся ли мы в зоне петли для уменьшения гравитации
-  // scale is 14 bits (16384), not 16 bits (65536) for xF16
-  // scale is 1 bit (x2) for xF16
+// --- Применение сил (Helper Functions) ---
+
+// Проверка: находится ли байк в зоне петли (для отключения гравитации)
+bool GamePhysics::checkLoopZone(int componentIndex, int& bikeVel) {
   int loopCenterXF16 = 2200 << 1;
-  int loopRadiusF16 = 500 << 1; // увеличенная зона влияния
+  int loopRadiusF16 = 500 << 1; 
   bool inLoopZone = false;
-  int bikeVel = 0;
+  bikeVel = 0;
 
   if (motorcycleParts.size() > 1 && motorcycleParts[1]) {
     int bikeX = motorcycleParts[1]->motoComponents[componentIndex]->xF16;
@@ -721,27 +721,32 @@ void GamePhysics::applyForces(int componentIndex) {
     int absDxLoop = dxLoop < 0 ? -dxLoop : dxLoop;
     inLoopZone = absDxLoop < loopRadiusF16;
   }
+  return inLoopZone;
+}
 
-  // REALISM: Only disable gravity if moving fast enough to stick
-  // If stopped (vel approx 0), gravity applies -> fall.
+void GamePhysics::applyGravity(int componentIndex, bool inLoopZone, int bikeVel) {
+  // Отключаем гравитацию только если скорость достаточна, чтобы "прилипнуть"
   bool fastEnough = bikeVel > 200000;
-
-  // В зоне петли ОТКЛЮЧАЕМ гравитацию для гарантии прохождения, НО только если
-  // едем быстро
   int effectiveGravity = (inLoopZone && fastEnough) ? 0 : gravityF16;
 
   for (int i = 0; i < 6; ++i) {
     BikePart *part = motorcycleParts[i].get();
     MotoComponent *component = part->motoComponents[componentIndex].get();
+    
+    // Сброс сил
     component->forceX = 0;
     component->forceY = 0;
     component->torque = 0;
+    
+    // Применение гравитации
     component->forceY -= (int)(((int64_t)effectiveGravity << 32) /
                                    (int64_t)part->suspensionStrength >>
                                16);
   }
+}
 
-  if (!isCrashed) {
+void GamePhysics::applyInternalConstraints(int componentIndex) {
+    if (!isCrashed) {
     applySpringConstraint(motorcycleParts[0].get(), springComponents[1].get(),
                           motorcycleParts[2].get(), componentIndex, 65536);
     applySpringConstraint(motorcycleParts[0].get(), springComponents[0].get(),
@@ -764,20 +769,27 @@ void GamePhysics::applyForces(int componentIndex) {
                         motorcycleParts[4].get(), componentIndex, 65536);
   applySpringConstraint(motorcycleParts[5].get(), springComponents[9].get(),
                         motorcycleParts[0].get(), componentIndex, 65536);
+}
 
+void GamePhysics::applyEngineTorque(int componentIndex) {
   MotoComponent *rearWheel =
       motorcycleParts[2]->motoComponents[componentIndex].get();
+      
   engineTorqueF16 =
       (int)((int64_t)engineTorqueF16 * (int64_t)(65536 - frictionCoeff) >> 16);
+      
   rearWheel->torque = engineTorqueF16;
-  if (rearWheel->angularVelocity > motoParam3) {
-    rearWheel->angularVelocity = motoParam3;
+  
+  if (rearWheel->angularVelocity > maxAngularVelocity) {
+    rearWheel->angularVelocity = maxAngularVelocity;
   }
 
-  if (rearWheel->angularVelocity < -motoParam3) {
-    rearWheel->angularVelocity = -motoParam3;
+  if (rearWheel->angularVelocity < -maxAngularVelocity) {
+    rearWheel->angularVelocity = -maxAngularVelocity;
   }
+}
 
+void GamePhysics::applyAerodynamics(int componentIndex, bool inLoopZone) {
   int avgVelX = 0;
   int avgVelY = 0;
 
@@ -794,7 +806,8 @@ void GamePhysics::applyForces(int componentIndex) {
     int dx = motorcycleParts[i]->motoComponents[componentIndex]->velX - avgVelX;
     int dy = motorcycleParts[i]->motoComponents[componentIndex]->velY - avgVelY;
     relativeSpeed = calcVectorLengthF16(dx, dy);
-    // Отключаем сопротивление воздуха в петле
+    
+    // Отключаем сопротивление воздуха в петле, чтобы не тормозить
     if (!inLoopZone && relativeSpeed > 1700000) {
       int normX = (int)(((int64_t)dx << 32) / (int64_t)relativeSpeed >> 16);
       int normY = (int)(((int64_t)dy << 32) / (int64_t)relativeSpeed >> 16);
@@ -803,20 +816,27 @@ void GamePhysics::applyForces(int componentIndex) {
     }
   }
 
+  // Расчет баланса колес (для контроля полета)
   int wheelYSign =
       motorcycleParts[2]->motoComponents[componentIndex]->yF16 -
-                  motorcycleParts[0]->motoComponents[componentIndex]->yF16 >=
-              0
-          ? 1
-          : -1;
+                  motorcycleParts[0]->motoComponents[componentIndex]->yF16 >= 0 ? 1 : -1;
   int wheelXSign =
       motorcycleParts[2]->motoComponents[componentIndex]->velX -
-                  motorcycleParts[0]->motoComponents[componentIndex]->velX >=
-              0
-          ? 1
-          : -1;
+                  motorcycleParts[0]->motoComponents[componentIndex]->velX >= 0 ? 1 : -1;
   wheelBalance = (wheelYSign * wheelXSign > 0) ? relativeSpeed : -relativeSpeed;
 }
+
+void GamePhysics::applyForces(int componentIndex) {
+    int bikeVel = 0;
+    bool inLoopZone = checkLoopZone(componentIndex, bikeVel);
+    
+    applyGravity(componentIndex, inLoopZone, bikeVel);
+    applyInternalConstraints(componentIndex);
+    applyEngineTorque(componentIndex);
+    applyAerodynamics(componentIndex, inLoopZone);
+}
+
+// --- Утилиты ---
 
 int GamePhysics::calcVectorLengthF16(int xF16, int yF16) {
   if (xF16 == 0 && yF16 == 0)
@@ -988,7 +1008,6 @@ void GamePhysics::enforceMinimumWheelBase(int stateIndex) {
     return;
   }
 
-  // Проверяем расстояние между передним и задним колесом в актуальном состоянии
   MotoComponent *front = motorcycleParts[1]->motoComponents[stateIndex].get();
   MotoComponent *rear = motorcycleParts[2]->motoComponents[stateIndex].get();
   int dx = front->xF16 - rear->xF16;
@@ -998,15 +1017,12 @@ void GamePhysics::enforceMinimumWheelBase(int stateIndex) {
     return;
   }
 
-  int minAllowed = (int)((int64_t)initialWheelSeparationF16 * 99 /
-                         100); // 99% базы - жестче рама
-  // Убрали проверку на схлопывание - смерть только от соприкосновения головы с
-  // трассой
+  int minAllowed = (int)((int64_t)initialWheelSeparationF16 * 99 / 100); // 99% базы
   if (distF16 >= minAllowed) {
     return;
   }
 
-  // Раздвигаем колёса вдоль оси, чтобы вернуть минимальный клиренс
+  // Раздвигаем колёса
   int correction = minAllowed - distF16;
   int normX = (int)(((int64_t)dx << 32) / distF16 >> 16);
   int normY = (int)(((int64_t)dy << 32) / distF16 >> 16);
@@ -1018,12 +1034,11 @@ void GamePhysics::enforceMinimumWheelBase(int stateIndex) {
   rear->xF16 -= corrX;
   rear->yF16 -= corrY;
 
-  // Чуть корректируем скорости по оси, чтобы не схлопываться обратно
   front->velX += corrX;
   front->velY += corrY;
   rear->velX -= corrX;
   rear->velY -= corrY;
-  engineTorqueF16 = 0; // сбрасываем момент, чтобы не схлопываться снова
+  engineTorqueF16 = 0; 
 }
 
 int GamePhysics::updateLevelCollision(int componentIndex) {
@@ -1044,11 +1059,9 @@ int GamePhysics::updateLevelCollision(int componentIndex) {
   int axleDY = motorcycleParts[1]->motoComponents[componentIndex]->yF16 -
                motorcycleParts[2]->motoComponents[componentIndex]->yF16;
   int axleLen = calcVectorLengthF16(axleDX, axleDY);
-  // Защита от деления на ноль при прыжке с петли (когда колеса могут быть в
-  // одной точке)
+  
   if (axleLen == 0) {
-    // Если колеса в одной точке, используем единичный вектор по умолчанию
-    axleDX = 65536; // 1.0 в F16
+    axleDX = 65536; 
     axleDY = 0;
     axleLen = 65536;
   } else {
@@ -1077,40 +1090,22 @@ int GamePhysics::updateLevelCollision(int componentIndex) {
       collisionNormalX = levelLoader->collisionNormalX;
       collisionNormalY = levelLoader->collisionNormalY;
 
-      // Смерть только при видимом соприкосновении головы (часть 5) с
-      // поверхностью
+      // Смерть только при видимом соприкосновении головы (часть 5) с поверхностью
       if (partIdx == 5 && collisionResult != 2) {
         isGroundColliding = true;
 
-        // Проверяем, что голова видна на экране (в пределах видимой области)
         int headX = component->xF16 >> 1;
-        // int headY = component->yF16 >> 1; // Unused
         int visibleStartX = levelLoader->visibleStartX;
         int visibleEndX = levelLoader->visibleEndX;
 
-        // Голова видна, если находится в видимой области по X
         bool headVisible =
             (headX >= visibleStartX - 200 && headX <= visibleEndX + 200);
 
-        // --- FIX: Проверка переворота ---
-        // Получаем Y координат колес для определения ориентации
-        // Используем сырые F16 координаты
         int wheel1Y = motorcycleParts[1]->motoComponents[componentIndex]->yF16;
         int wheel2Y = motorcycleParts[2]->motoComponents[componentIndex]->yF16;
         int avgWheelY = (wheel1Y + wheel2Y) >> 1;
 
-        // В нашей системе координат Y растет вверх (земля ~ 220, верх ~ 800)
-        // Если байк на колесах: HeadY > WheelY (Голова выше)
-        // Если байк перевернут: HeadY < WheelY (Голова ниже)
-        // Добавляем небольшой допуск (например 5 единиц в F16 ~= 327680)
-        // чтобы не умирать при 90 градусах (езда по стене)
         bool isInverted = component->yF16 < (avgWheelY - 65536);
-
-        // Смерть только при жесткой коллизии (0), видимой голове И перевороте
-        if (collisionResult == 0 && partIdx == 5) {
-             LOG_PHYS("Head Collision! Visible=%d Inverted=%d Y=%d WheelY=%d", 
-                      headVisible, isInverted, component->yF16, avgWheelY);
-        }
 
         if (collisionResult == 0 && headVisible && isInverted) {
           LOG_PHYS("CRASH DETECTED! HeadY=%d AvgWheelY=%d", component->yF16, avgWheelY);
@@ -1128,7 +1123,6 @@ int GamePhysics::updateLevelCollision(int componentIndex) {
       } else if (collisionResult == 0) {
         activePartIndex = partIdx;
         collisionType = 0;
-        // Не прерываем цикл, если это не голова - смерть только от головы
         if (partIdx != 5) {
           break;
         }
@@ -1148,34 +1142,31 @@ void GamePhysics::updateWheelPhysics(int componentIndex) {
   int suspensionFrontLocal;
   int suspensionBackLocal;
   int forkLengthLocal;
-  int torqueFront;
-  int torqueBack;
+  int torqueFrontLocal;
+  int torqueBackLocal;
+  
   if (isInputBreak && (activePartIndex == 2 || activePartIndex == 1) &&
       component->angularVelocity < 6553) {
-    suspensionFrontLocal = suspensionFront - motoParam7;
+    suspensionFrontLocal = suspensionFront - brakeForce;
     suspensionBackLocal = 13107;
     forkLengthLocal = 39321;
-    torqueFront = 26214 - motoParam7;
-    torqueBack = 26214 - motoParam7;
+    torqueFrontLocal = 26214 - brakeForce;
+    torqueBackLocal = 26214 - brakeForce;
   } else {
     suspensionFrontLocal = suspensionFront;
     suspensionBackLocal = suspensionBack;
     forkLengthLocal = forkLength;
-    torqueFront = motoParam1;
-    torqueBack = motoParam2;
+    torqueFrontLocal = torqueFront;
+    torqueBackLocal = torqueRear;
   }
 
   int normalLen = calcVectorLengthF16(collisionNormalX, collisionNormalY);
-  // Защита от деления на ноль при некорректной нормали коллизии
   if (normalLen == 0) {
-    // Если нормаль нулевая, используем единичный вектор вверх по умолчанию
     collisionNormalX = 0;
-    collisionNormalY = 65536; // 1.0 в F16 (направление вверх)
+    collisionNormalY = 65536; 
   } else {
-    collisionNormalX =
-        (int)(((int64_t)collisionNormalX << 32) / (int64_t)normalLen >> 16);
-    collisionNormalY =
-        (int)(((int64_t)collisionNormalY << 32) / (int64_t)normalLen >> 16);
+    collisionNormalX = (int)(((int64_t)collisionNormalX << 32) / (int64_t)normalLen >> 16);
+    collisionNormalY = (int)(((int64_t)collisionNormalY << 32) / (int64_t)normalLen >> 16);
   }
   int velX = component->velX;
   int velY = component->velY;
@@ -1193,13 +1184,13 @@ void GamePhysics::updateWheelPhysics(int componentIndex) {
                                 16)) >>
             16);
   int newTangentVel =
-      (int)((int64_t)torqueFront * (int64_t)tangentVel >> 16) -
+      (int)((int64_t)torqueFrontLocal * (int64_t)tangentVel >> 16) -
       (int)((int64_t)forkLengthLocal *
                 (int64_t)((int)((int64_t)component->angularVelocity *
                                     (int64_t)part->connectionLengthF16 >>
                                 16)) >>
             16);
-  int normalPush = -((int)((int64_t)torqueBack * (int64_t)normalVel >> 16));
+  int normalPush = -((int)((int64_t)torqueBackLocal * (int64_t)normalVel >> 16));
   int deltaVelX =
       (int)((int64_t)(-newTangentVel) * (int64_t)(-collisionNormalY) >> 16);
   int deltaVelY =
@@ -1212,7 +1203,6 @@ void GamePhysics::updateWheelPhysics(int componentIndex) {
   component->velX = deltaVelX + deltaNormalX;
   component->velY = deltaVelY + deltaNormalY;
 
-  // Дополнительная защита от схлопывания сразу после коллизии
   enforceMinimumWheelBase(componentIndex);
 }
 
@@ -1294,6 +1284,8 @@ void GamePhysics::setMotoComponents() {
       motorcycleParts[2]->motoComponents[5]->angularVelocity;
 }
 
+// --- Отрисовка (Rendering) ---
+
 void GamePhysics::renderMotoFork(GameCanvas *canvas) {
   canvas->setColor(128, 128, 128);
   canvas->drawLineF16(motoComponents[3]->xF16, motoComponents[3]->yF16,
@@ -1306,7 +1298,6 @@ void GamePhysics::renderRiderSkeleton(GameCanvas *gameCanvas, int dirXF16,
   int var8 = motoComponents[0]->xF16;
   int var9 = motoComponents[0]->yF16;
 
-  // Переменные для хранения координат точек тела водителя
   int xF16 = 0, yF16 = 0, x2F16 = 0, y2F16 = 0, x3F16 = 0, y3F16 = 0, x4F16 = 0,
       y4F16 = 0;
   int x5F16 = 0, y5F16 = 0, x6F16 = 0, y6F16 = 0, circleXF16 = 0,
@@ -1315,8 +1306,6 @@ void GamePhysics::renderRiderSkeleton(GameCanvas *gameCanvas, int dirXF16,
   std::vector<std::vector<int>> baseCoords;
   std::vector<std::vector<int>> targetCoords;
 
-  // Выбираем массивы с координатами для модели водителя
-  // определяет позу водителя в зависимости от наклона
   if (tiltAngleF16 < 32768) {
     baseCoords = hardcodedArr5;
     targetCoords = hardcodedArr4;
@@ -1327,9 +1316,7 @@ void GamePhysics::renderRiderSkeleton(GameCanvas *gameCanvas, int dirXF16,
     var7 = (int)((int64_t)(tiltAngleF16 - 32768) * 131072L >> 16);
   }
 
-  // вычисляем итоговые координаты для каждой точки тела
   for (std::size_t i = 0; i < baseCoords.size(); ++i) {
-    // Линейная интерполяция: pos = a * (1-t) + b * t
     int finalX =
         (int)((int64_t)baseCoords[i][0] * (int64_t)(65536 - var7) >> 16) +
         (int)((int64_t)targetCoords[i][0] * (int64_t)var7 >> 16);
@@ -1337,13 +1324,11 @@ void GamePhysics::renderRiderSkeleton(GameCanvas *gameCanvas, int dirXF16,
         (int)((int64_t)baseCoords[i][1] * (int64_t)(65536 - var7) >> 16) +
         (int)((int64_t)targetCoords[i][1] * (int64_t)var7 >> 16);
 
-    // Поворачиваем и смещаем точку относительно центра масс
     int rotatedX = var8 + (int)((int64_t)rotXF16 * (int64_t)finalX >> 16) +
                    (int)((int64_t)dirXF16 * (int64_t)finalY >> 16);
     int rotatedY = var9 + (int)((int64_t)rotYF16 * (int64_t)finalX >> 16) +
                    (int)((int64_t)dirYF16 * (int64_t)finalY >> 16);
 
-    // Присваиваем координаты соответствующим частям тела
     switch (i) {
     case 0:
       x2F16 = rotatedX;
@@ -1384,7 +1369,6 @@ void GamePhysics::renderRiderSkeleton(GameCanvas *gameCanvas, int dirXF16,
   gameCanvas->drawLineF16(x4F16, y4F16, x5F16, y5F16);
   gameCanvas->drawLineF16(x5F16, y5F16, x6F16, y6F16);
 
-  // Рисуем голову в виде круга
   int head_radius = 65536;
   gameCanvas->setColor(156, 0, 0);
   gameCanvas->drawCircle(circleXF16 << 2 >> 16, circleYF16 << 2 >> 16,
@@ -1472,48 +1456,34 @@ void GamePhysics::renderGame(GameCanvas *gameCanvas) {
 
   gameCanvas->setColor(50, 50, 50);
 
-  // Рисуем тормозные диски (простые дуги)
   gameCanvas->drawBrakeDisc(
       motoComponents[1]->xF16 << 2 >> 16, motoComponents[1]->yF16 << 2 >> 16,
       const175_1_half[0] << 2 >> 16, MathF16::atan2F16(xxF16, yyF16));
 
-  // Рисуем вилку мотоцикла (линия)
-  if (!isCrashed) { // isCrashed - флаг, что мотоцикл не развалился
+  if (!isCrashed) { 
     renderMotoFork(gameCanvas);
   }
 
-  // Рисуем "проволочную" раму, затем "палочного" водителя (чтобы голова была
-  // поверх рамы при ударах)
   renderBikeWireframe(gameCanvas, xxF16, yyF16, var5, xxF16);
   renderRiderSkeleton(gameCanvas, xxF16, yyF16, var5, xxF16);
 
-  // Отрисовка колес.
-  int wheelRadius = GamePhysics::const175_1_half[0] << 2 >>
-                    16; // Используем радиус из констант физики
-  // Заднее колесо (индекс 2)
+  int wheelRadius = GamePhysics::const175_1_half[0] << 2 >> 16;
   gameCanvas->drawWheel(motoComponents[2]->xF16 << 2 >> 16,
                         motoComponents[2]->yF16 << 2 >> 16, wheelRadius);
-  // Переднее колесо (индекс 1)
   gameCanvas->drawWheel(motoComponents[1]->xF16 << 2 >> 16,
                         motoComponents[1]->yF16 << 2 >> 16, wheelRadius);
 
-  // Рисуем трассу в виде простой ломаной линии
   levelLoader->renderTrackNearestLine(gameCanvas);
 }
 
 void GamePhysics::enforceGroundCollision() {
-  // Защита от краша - проверяем что levelLoader и gameLevel валидны
   if (!levelLoader || !levelLoader->gameLevel) {
     return;
   }
 
-  // Притягиваем к трассе везде, включая петлю, чтобы мотоцикл проходил петлю
-  // прижатым к трассе
-  const int groundY_F16 = 220 << 1; // базовый уровень земли в F16
   const int loopCenterXF16 = 2200 << 1;
   const int loopRadiusF16 = 350 << 1;
-  const int loopMarginF16 = 500
-                            << 1; // увеличен запас вокруг петли для притяжения
+  const int loopMarginF16 = 500 << 1;
 
   for (int i = 1; i <= 2; ++i) {
     MotoComponent *wheel =
@@ -1524,52 +1494,39 @@ void GamePhysics::enforceGroundCollision() {
     int phys_wheel_x = wheel->xF16;
     int phys_wheel_y = wheel->yF16;
 
-    // Определяем, находимся ли мы в зоне петли
     int dxLoop = phys_wheel_x - loopCenterXF16;
     int absDxLoop = dxLoop < 0 ? -dxLoop : dxLoop;
     bool inLoopZone = absDxLoop < loopRadiusF16 + loopMarginF16;
 
     int wheel_radius = GamePhysics::const175_1_half[0];
 
-    // Защита от краша - проверяем валидность координат
     int trackX = phys_wheel_x >> 1;
     if (trackX < 0 || trackX > 10000) {
-      continue; // Выход за разумные границы
+      continue; 
     }
 
-    // Передаем текущий Y как подсказку, чтобы различать уровни петли (например,
-    // низ vs верх или выход)
     int phys_track_y =
         (levelLoader->gameLevel->getTrackHeightAt(trackX, phys_wheel_y >> 1))
         << 1;
-    int target_y = phys_track_y +
-                   wheel_radius; // Y растет вверх: центр выше грунта на радиус
+    int target_y = phys_track_y + wheel_radius;
 
-    // В зоне петли - сильное притяжение к трассе для прохождения петли
     if (inLoopZone) {
-      // Притягиваем к трассе в петле с сильной силой для прохождения всей петли
       int distanceToTrack = target_y - phys_wheel_y;
       if (distanceToTrack > 0) {
-        // Очень сильное притяжение к трассе в петле (почти мгновенное)
-        int pullStrength = 65536; // 1.0 в F16 - мгновенное притяжение
+        int pullStrength = 65536; 
         int pullY =
             (int)((int64_t)distanceToTrack * (int64_t)pullStrength >> 16);
         wheel->yF16 += pullY;
-        // Корректируем скорость в направлении трассы - полностью убираем
-        // скорость падения
         if (wheel->velY < 0) {
-          wheel->velY = (int)((int64_t)wheel->velY * 16384L >>
-                              16); // сильно уменьшаем скорость падения
+          wheel->velY = (int)((int64_t)wheel->velY * 16384L >> 16); 
         }
       } else if (distanceToTrack < -65536) {
-        // Если слишком далеко от трассы в другую сторону, слегка подтягиваем
-        int pullStrength = 16384; // 0.25 в F16 - слабое притяжение
+        int pullStrength = 16384; 
         int pullY =
             (int)((int64_t)distanceToTrack * (int64_t)pullStrength >> 16);
         wheel->yF16 += pullY;
       }
     } else {
-      // Вне петли - обычное притяжение к трассе
       if (phys_wheel_y < target_y) {
         wheel->yF16 = target_y;
         if (wheel->velY < 0) {
@@ -1581,28 +1538,16 @@ void GamePhysics::enforceGroundCollision() {
 }
 
 void GamePhysics::checkAndShiftWorld() {
-    // Threshold: 10,000 units in F16 (scaled by 2 for logic? no, wait)
-    // MotoComponent xF16 is in raw F16 units (65536 per unit)
-    // getCamPosX returns logic units (screen pixels * zoom?)
-    // Let's use raw xF16 of the chassis.
-    
     if (motorcycleParts.empty() || !motorcycleParts[0]) return;
     
     int currentX = motorcycleParts[0]->motoComponents[primaryStateIndex]->xF16;
     
-    // 10,000 units * 65536 = 655,360,000.
-    // Max int is 2,147,483,647.
-    // Safe threshold: 1,000,000,000 (approx 15,000 units).
-    
-    const int THRESHOLD = 1000000000; // ~61k units (Safe for 32-bit signed int F14)
-    // SHIFT_AMOUNT must be multiple of 16384 to match generator scale (F14 vs Units)
-    // 500,000,000 / 16384 * 16384 = 499990528
+    const int THRESHOLD = 1000000000; 
     const int SHIFT_AMOUNT = 499990528; 
     
     if (currentX > THRESHOLD) {
-        LOG_PHYS("SHIFTING WORLD! currentX=%d Shift=%d", currentX, SHIFT_AMOUNT);
+        LOG_PHYS("СДВИГ МИРА! currentX=%d Shift=%d", currentX, SHIFT_AMOUNT);
         
-        // 1. Shift all MotoComponents
         for(auto& part : motorcycleParts) {
             if(!part) continue;
             for(auto& comp : part->motoComponents) {
@@ -1610,135 +1555,11 @@ void GamePhysics::checkAndShiftWorld() {
             }
         }
         
-        // 2. Shift Spring Components (they have xF16 too, used for physics state?)
-        // Actually springComponents xF16 is used for stiffness/damping params often (see setupBike)
-        // BUT some might be position?
-        // In setupBike: springComponents[i]->xF16 = motoParam10; (stiffness)
-        // So we should NOT shift springComponents unless they store world coordinates.
-        // Looking at applySpringConstraint:
-        // int stretchF16 = distanceF16 - spring->yF16;
-        // int forceX = ... spring->xF16 ...
-        // So spring components store PARAMETERS, not world coordinates.
-        // EXCEPT maybe if they are used as anchors?
-        // No, applySpringConstraint uses partA and partB positions.
-        // So we SKIP springComponents.
-        
-        // 3. Shift Level
-        // The level stores points in raw units?
-        // GameLevel::addPointSimple uses x << 16 >> 3.
-        // GameLevel stores (x * 8192).
-        // xF16 is (x * 65536).
-        // So Level scale is 1/8 of xF16 scale?
-        // Let's check LevelLoader::detectCollision.
-        // int wheelX = wheel->xF16 >> 1;
-        // int x1 = gameLevel->pointPositions[segmentIdx][0];
-        // Collision check compares wheelX (xF16/2) with x1.
-        // So Level Points are stored in xF16 / 2 scale.
-        
-        // So shift for Level should be SHIFT_AMOUNT / 2.
-        // Wait, SHIFT_AMOUNT is in xF16.
-        // We need to shift level points by (SHIFT_AMOUNT >> 1).
-        
-        // BUT GameLevel::addPointSimple takes input, shifts it << 16 >> 3.
-        // That is x * 8192.
-        // wheel->xF16 >> 1 is x * 32768.
-        // This discrepancy is confusing.
-        // Let's trust LevelLoader::shiftLevel logic to handle the shift magnitude?
-        // No, LevelLoader::shiftLevel calls GameLevel::shiftPoints(shiftX).
-        // If I pass SHIFT_AMOUNT to shiftLevel, what should it be?
-        
-        // In detectCollision:
-        // int wheelX = wheel->xF16 >> 1;
-        // int x1 = gameLevel->pointPositions[i][0];
-        // So pointPositions are in (F16 / 2) domain.
-        
         int levelShift = SHIFT_AMOUNT >> 1;
         
         if (levelLoader) {
             levelLoader->shiftLevel(levelShift);
         }
-        
-        // 4. Shift Generator
-        // Generator lastX is in what units?
-        // addPointSimple(lastX, lastY).
-        // If lastX is passed to addPointSimple, it's raw input units?
-        // In loadLevel: lastX = 0.
-        // addSlope: lastX += ...
-        // level->addPointSimple(lastX, lastY).
-        
-        // addPointSimple(x, y):
-        // addPoint((int)((int64_t)x << 16 >> 3), ...);
-        // So x is "Logic Unit". (Screen pixel approx?)
-        // xF16 is Logic Unit * 65536.
-        // So x is xF16 / 65536.
-        
-        // The SHIFT_AMOUNT is xF16.
-        // So generator shift should be SHIFT_AMOUNT / 65536?
-        
-        // Wait, detectCollision says:
-        // wheelX = wheel->xF16 >> 1; (This is F15?)
-        // x1 (from level) is compared to wheelX.
-        // So level points are F15.
-        // addPointSimple does: x << 16 >> 3 = x * 8192 = x * 2^13.
-        // F15 is x * 2^15.
-        // So addPointSimple input 'x' must be multiplied by 4 to get F15?
-        // No.
-        
-        // Let's re-read GameLevel::addPointSimple.
-        // addPoint((int)((int64_t)x << 16 >> 3));
-        // x * 2^13.
-        // LevelLoader uses x1 (which is from pointPositions) directly.
-        // And compares with wheel->xF16 >> 1 (which is x * 2^15).
-        // So x1 is F15.
-        // So stored points are F15.
-        // So addPointSimple produces F15?
-        // x * 2^13 != F15 (x * 2^15) UNLESS input 'x' is already x * 4?
-        // Or maybe my shift analysis is wrong.
-        
-        // Let's look at LevelLoader::prepareLevelData.
-        // No conversion there.
-        
-        // Let's look at getTrackHeightAt.
-        // x_pos is passed in.
-        // It iterates pointPositions.
-        
-        // Let's look at Micro or setup.
-        // setupBike calls levelLoader->getStartPosX().
-        // getStartPosX returns startPosX << 1.
-        // startPosX is stored in GameLevel (via setStartFinish).
-        // setStartFinish does x << 16 >> 3.
-        
-        // If GameLevel stores in F13 (x*8192), and LevelLoader returns F14 (x*16384)?
-        // setupBike: xF16 = startX + ...
-        // If startX is F14, then xF16 is F14?
-        // But physics usually runs in F16 (x*65536).
-        
-        // This coordinate system is a mess.
-        // However, if I shift everything by consistent amounts, it should work.
-        
-        // SHIFT_AMOUNT is in xF16 domain (Physics Domain).
-        // MotoComponents use xF16. So we subtract SHIFT_AMOUNT.
-        
-        // Level Points (GameLevel::pointPositions) are in whatever domain they are stored.
-        // If detectCollision compares (xF16 >> 1) with PointPosition,
-        // Then PointPosition is in (xF16 >> 1) domain.
-        // So we must subtract (SHIFT_AMOUNT >> 1) from Level Points.
-        
-        // Level Generator 'lastX'.
-        // addPointSimple(lastX, lastY).
-        // addPointSimple converts lastX to PointPosition domain.
-        // PointPosition = lastX * (2^13).
-        // We know PointPosition = xF16 / 2.
-        // So lastX * 2^13 = xF16 / 2 = xF16 * 2^-1.
-        // lastX = xF16 * 2^-14.
-        // So lastX is xF16 >> 14.
-        
-        // So generator shift = SHIFT_AMOUNT >> 14.
-        
-        // Let's verify.
-        // If I shift physics by S.
-        // I shift level points by S/2.
-        // I shift generator by S/16384.
         
         int generatorShift = SHIFT_AMOUNT >> 14;
         
