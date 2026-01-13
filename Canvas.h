@@ -13,8 +13,8 @@ class Graphics;
 class Canvas : public Displayable {
 private:
     std::unique_ptr<CanvasImpl> impl;
-    std::unique_ptr<Graphics> graphics; // IMPROVE this is probably not the best place for graphics
-    CommandListener* commandListener;
+    std::unique_ptr<Graphics> graphics;
+    CommandListener* commandListener = nullptr;
 
     std::unordered_set<Command*, Command::HashFunction, Command::EqualFunction> currentCommands;
 
@@ -28,7 +28,7 @@ public:
     };
 
     Canvas();
-    ~Canvas();
+    ~Canvas() override;
     bool isShown() override;
     int getWidth() override;
     int getHeight() override;
@@ -38,9 +38,9 @@ public:
     void handleEventsAndPresent();
     void serviceRepaints();
     int getGameAction(int keyCode);
-    void removeCommand(Command* command);
-    void addCommand(Command* command);
-    void setCommandListener(CommandListener* listener);
+    void removeCommand(Command* command) override;
+    void addCommand(Command* command) override;
+    void setCommandListener(CommandListener* listener) override;
     void publicKeyPressed(int keyCode);
     void publicKeyReleased(int keyCode);
     void pressedEsc();

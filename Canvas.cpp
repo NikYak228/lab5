@@ -9,14 +9,11 @@
 #include "CommandListener.h"
 
 Canvas::Canvas()
-{
-    impl = std::make_unique<CanvasImpl>(this);
-    graphics = std::make_unique<Graphics>(impl->getRenderer());
-}
+    : impl(std::make_unique<CanvasImpl>(this)),
+      graphics(std::make_unique<Graphics>(impl->getRenderer())),
+      commandListener(nullptr) {}
 
-Canvas::~Canvas()
-{
-}
+Canvas::~Canvas() = default;
 
 int Canvas::getWidth()
 {
@@ -43,24 +40,18 @@ CanvasImpl* Canvas::getCanvasImpl()
     return impl.get();
 }
 
-// Canvas.cpp
-
-//... (другие методы)
-
 void Canvas::repaint()
 {
-    // Теперь repaint ТОЛЬКО готовит кадр для отрисовки
+    // Готовит кадр для отрисовки
     paint(graphics.get());
 }
 
 void Canvas::handleEventsAndPresent()
 {
-    // А эта новая функция обрабатывает события и выводит кадр на экран
+    // Обрабатывает события и выводит кадр на экран
     impl->processEvents();
-    impl->repaint(); // Этот repaint из CanvasImpl, он вызывает SDL_RenderPresent
+    impl->repaint(); // Этот repaint из CanvasImpl, вызывает SDL_RenderPresent
 }
-
-// ... (другие методы)
 
 void Canvas::serviceRepaints()
 {

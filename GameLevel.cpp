@@ -1,151 +1,173 @@
 #include "GameLevel.h"
 #include "GameCanvas.h"
 #include "GamePhysics.h"
+#include <climits>
 
-GameLevel::GameLevel() {
-    init();
-}
+GameLevel::GameLevel() { init(); }
 GameLevel::~GameLevel() {}
 
 void GameLevel::init() {
-    startPosX = 0;
-    startPosY = 0;
-    finishPosX = 13107200;
-    pointsCount = 0;
-    field_274 = 0;
-    pointPositions.clear();
+  startPosX = 0;
+  startPosY = 0;
+  finishPosX = 13107200;
+  pointsCount = 0;
+  currentSegment = 0;
+  pointPositions.clear();
 }
 
-void GameLevel::setStartFinish(int startX, int startY, int finishX, int finishY) {
-    startPosX = startX << 16 >> 3;
-    startPosY = startY << 16 >> 3;
-    finishPosX = finishX << 16 >> 3;
-    finishPosY = finishY << 16 >> 3;
+void GameLevel::setStartFinish(int startX, int startY, int finishX,
+                               int finishY) {
+  startPosX = (int)((int64_t)startX << 16 >> 3);
+  startPosY = (int)((int64_t)startY << 16 >> 3);
+  finishPosX = (int)((int64_t)finishX << 16 >> 3);
+  finishPosY = (int)((int64_t)finishY << 16 >> 3);
 }
 
-void GameLevel::renderTrackNearestGreenLine(GameCanvas* gameCanvas) {
-    const int gradientSteps = 80;  // сколько «слоёв» градиента
-    // цвет в верхней точке (самая трасса)
-    const int r1 =  40, g1 = 200, b1 =  40;
-    // цвет в нижней точке градиента
-    const int r2 =   0, g2 = 100, b2 =   0;
+void GameLevel::renderTrackNearestGreenLine(GameCanvas *gameCanvas) {
+  // Рисуем только линию трассы без заливки вниз
+  gameCanvas->setColor(40, 200, 40); // зеленый
 
-    int pointNo = 0;
-    // ищем первый видимый сегмент
-    while (pointNo < pointsCount-1 && pointPositions[pointNo][0] <= minX) {
-        ++pointNo;
-    }
-    if (pointNo>0) --pointNo;
+  for (int pointNo = 0; pointNo < pointsCount - 1; ++pointNo) {
+    int x1 = (int)((int64_t)pointPositions[pointNo][0] << 3 >> 16);
+    int y1 = (int)((int64_t)pointPositions[pointNo][1] << 3 >> 16);
+    int x2 = (int)((int64_t)pointPositions[pointNo + 1][0] << 3 >> 16);
+    int y2 = (int)((int64_t)pointPositions[pointNo + 1][1] << 3 >> 16);
 
-    for (; pointNo < pointsCount-1; ++pointNo) {
-        int x1 = pointPositions[pointNo    ][0] << 3 >> 16;
-        int y1 = pointPositions[pointNo    ][1] << 3 >> 16;
-        int x2 = pointPositions[pointNo + 1][0] << 3 >> 16;
-        int y2 = pointPositions[pointNo + 1][1] << 3 >> 16;
-
-        // если сегмент за экраном — выходим
-        if (x1 > maxX && x2 > maxX) break;
-
-        // рисуем градиент снизу вверх
-        for (int step = 0; step < gradientSteps; ++step) {
-            float t = float(step) / float(gradientSteps - 1);
-            int r = int(r1 * (1 - t) + r2 * t);
-            int g = int(g1 * (1 - t) + g2 * t);
-            int b = int(b1 * (1 - t) + b2 * t);
-
-            gameCanvas->setColor(r, g, b);
-            gameCanvas->drawLine(
-                x1, y1 - step,
-                x2, y2 - step
-            );
-        }
-    }
+    // Толщина 3 px
+    gameCanvas->drawLine(x1, y1, x2, y2);
+    gameCanvas->drawLine(x1, y1 - 1, x2, y2 - 1);
+    gameCanvas->drawLine(x1, y1 + 1, x2, y2 + 1);
+  }
 }
-
 
 void GameLevel::addPoint(int x, int y) {
-    if (pointPositions.empty() || static_cast<int>(pointPositions.size()) <= pointsCount) {
-        pointPositions.resize(pointsCount + 30, std::vector<int>(2));
-    }
-    if (pointsCount == 0 || pointPositions[pointsCount - 1][0] < x) {
-        pointPositions[pointsCount][0] = x;
-        pointPositions[pointsCount][1] = y;
-        ++pointsCount;
-    }
+  if (pointPositions.empty() ||
+      static_cast<int>(pointPositions.size()) <= pointsCount) {
+    pointPositions.resize(pointsCount + 30, std::vector<int>(2));
+  }
+  pointPositions[pointsCount][0] = x;
+  pointPositions[pointsCount][1] = y;
+  ++pointsCount;
 }
 
-void GameLevel::addPointSimple(int var1, int var2) {
-    addPoint(var1 << 16 >> 3, var2 << 16 >> 3);
+void GameLevel::addPointSimple(int x, int y) {
+  addPoint((int)((int64_t)x << 16 >> 3), (int)((int64_t)y << 16 >> 3));
 }
 
-
-// Остальные методы можно скопировать из вашего оригинального GameLevel.cpp
-// так как они в основном занимаются математикой, а не отрисовкой.
-// Для простоты я включу их реализации ниже.
-
-int GameLevel::getStartPosX() { return startPosX << 3 >> 16; }
-int GameLevel::getStartPosY() { return startPosY << 3 >> 16; }
-int GameLevel::getFinishPosX() { return finishPosX << 3 >> 16; }
-int GameLevel::getFinishPosY() { return finishPosY << 3 >> 16; }
-int GameLevel::getPointX(int pointNo) { return pointPositions[pointNo][0] << 3 >> 16; }
-int GameLevel::getPointY(int pointNo) { return pointPositions[pointNo][1] << 3 >> 16; }
+int GameLevel::getStartPosX() { return (int)((int64_t)startPosX << 3 >> 16); }
+int GameLevel::getStartPosY() { return (int)((int64_t)startPosY << 3 >> 16); }
+int GameLevel::getFinishPosX() { return (int)((int64_t)finishPosX << 3 >> 16); }
+int GameLevel::getFinishPosY() { return (int)((int64_t)finishPosY << 3 >> 16); }
+int GameLevel::getPointX(int pointNo) {
+  return (int)((int64_t)pointPositions[pointNo][0] << 3 >> 16);
+}
+int GameLevel::getPointY(int pointNo) {
+  return (int)((int64_t)pointPositions[pointNo][1] << 3 >> 16);
+}
 
 int GameLevel::computeProgress(int posX) {
-    int var2 = posX - pointPositions[startFlagPoint][0];
-    int var3;
-    return ((var3 = pointPositions[finishFlagPoint][0] - pointPositions[startFlagPoint][0]) < 0 ? -var3 : var3) >= 3 && var2 <= var3 ? (int)(((int64_t)var2 << 32) / (int64_t)var3 >> 16) : 65536;
+  int deltaStart = posX - pointPositions[startFlagPoint][0];
+  int deltaFinish =
+      pointPositions[finishFlagPoint][0] - pointPositions[startFlagPoint][0];
+  int absDeltaFinish = deltaFinish < 0 ? -deltaFinish : deltaFinish;
+  return absDeltaFinish >= 3 && deltaStart <= deltaFinish
+             ? (int)(((int64_t)deltaStart << 32) / (int64_t)deltaFinish >> 16)
+             : 65536;
 }
 
 void GameLevel::setMinMaxX(int minX, int maxX) {
-    this->minX = minX << 16 >> 3;
-    this->maxX = maxX << 16 >> 3;
+  this->minX = (int)((int64_t)minX << 16 >> 3);
+  this->maxX = (int)((int64_t)maxX << 16 >> 3);
 }
 
 void GameLevel::setSegmentRange(int start, int end) {
-    field_264 = start >> 1;
-    field_265 = end >> 1;
+  segmentStart = start >> 1;
+  segmentEnd = end >> 1;
 }
 
 void GameLevel::setSegmentRangeExact(int start, int end, int extra) {
-    field_264 = start;
-    field_265 = end;
-    field_266 = extra;
+  segmentStart = start;
+  segmentEnd = end;
+  segmentExtra = extra;
 }
 
-// Функции отрисовки теней и 3D можно сделать пустыми, так как мы их отключили
-void GameLevel::renderShadow(GameCanvas* gameCanvas, int var2, int var3) {}
-void GameLevel::renderLevel3D(GameCanvas* gameCanvas, int xF16, int yF16) {}
-// GameLevel.cpp (в конец файла)
+int GameLevel::getTrackHeightAt(int x_pos, int current_y_hint) {
+  if (pointsCount < 2)
+    return 0;
 
-int GameLevel::getTrackHeightAt(int x_pos) {
-    if (pointsCount < 2) return 0; // Нечего проверять, если нет трассы
+  int bestY = 0;
+  int minDiffY = INT_MAX;
+  bool found = false;
 
-    // Находим два поинта трассы, между которыми находится x_pos
-    int p1_idx = -1;
-    for (int i = 0; i < pointsCount - 1; ++i) {
-        if (pointPositions[i][0] <= x_pos && pointPositions[i + 1][0] >= x_pos) {
-            p1_idx = i;
-            break;
-        }
+  // Ищем ВСЕ сегменты, покрывающие x_pos, и выбираем ближайший по Y к
+  // current_y_hint
+  for (int i = 0; i < pointsCount - 1; ++i) {
+    int x1 = pointPositions[i][0];
+    int y1 = pointPositions[i][1];
+    int x2 = pointPositions[i + 1][0];
+    int y2 = pointPositions[i + 1][1];
+
+    // Проверяем, попадает ли x_pos в диапазон сегмента (с учетом направления)
+    bool inRange = (x1 <= x_pos && x_pos <= x2) || (x2 <= x_pos && x_pos <= x1);
+
+    if (inRange) {
+      // Линейная интерполяция
+      int interpolated_y;
+      if (x2 == x1) {
+        interpolated_y = y1;
+      } else {
+        double t = (double)(x_pos - x1) / (double)(x2 - x1);
+        interpolated_y = (int)(y1 + t * (y2 - y1));
+      }
+
+      // Если hint не задан (0), возвращаем первый найденный (старое поведение)
+      // Но лучше переделать физику, чтобы всегда подавать hint.
+      // Пока считаем: если hint=0, и это первый матч - берем его.
+      // Но правильнее искать diff.
+
+      if (current_y_hint == 0) {
+        // Fallback to first match if no hint provided (compatibility)
+        return interpolated_y;
+      }
+
+      int diff = interpolated_y - current_y_hint;
+      if (diff < 0)
+        diff = -diff;
+
+      if (diff < minDiffY) {
+        minDiffY = diff;
+        bestY = interpolated_y;
+        found = true;
+      }
     }
+  }
 
-    if (p1_idx == -1) {
-        // Если мы за пределами трассы, возвращаем высоту ближайшей точки
-        if (x_pos < pointPositions[0][0]) return pointPositions[0][1];
-        return pointPositions[pointsCount - 1][1];
+  if (found) {
+    return bestY;
+  }
+
+  // Fallback: nearest point logic if no segment covers X
+  int nearest = 0;
+  int bestDx = INT_MAX;
+  for (int i = 0; i < pointsCount; ++i) {
+    int dx = pointPositions[i][0] - x_pos;
+    dx = dx < 0 ? -dx : dx;
+    if (dx < bestDx) {
+      bestDx = dx;
+      nearest = i;
     }
+  }
+  return pointPositions[nearest][1];
+}
 
-    // Выполняем линейную интерполяцию, чтобы найти точную высоту
-    int p2_idx = p1_idx + 1;
-    int x1 = pointPositions[p1_idx][0];
-    int y1 = pointPositions[p1_idx][1];
-    int x2 = pointPositions[p2_idx][0];
-    int y2 = pointPositions[p2_idx][1];
-
-    if (x2 == x1) return y1; // Избегаем деления на ноль
-
-    double t = (double)(x_pos - x1) / (double)(x2 - x1);
-    int interpolated_y = (int)(y1 + t * (y2 - y1));
-
-    return interpolated_y;
+void GameLevel::shiftPoints(int shiftX) {
+    // Shift all points
+    for(int i = 0; i < pointsCount; ++i) {
+        pointPositions[i][0] -= shiftX;
+    }
+    // Shift start/finish
+    startPosX -= shiftX;
+    finishPosX -= shiftX;
+    minX -= shiftX;
+    maxX -= shiftX;
 }

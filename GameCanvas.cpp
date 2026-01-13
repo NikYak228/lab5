@@ -23,7 +23,6 @@ GameCanvas::GameCanvas(Micro* micro) : micro(micro) {
 }
 
 GameCanvas::~GameCanvas() = default;
-// GameCanvas.cpp
 
 void GameCanvas::drawVectorChar(char c, int start_x, int start_y, int scale) {
     // Проверяем, есть ли такой символ в нашем шрифте. Если нет - выходим.
@@ -69,8 +68,8 @@ void GameCanvas::drawVectorString(const std::string& text, int start_x, int star
         current_x += char_width; // Сдвигаем позицию для следующего символа
     }
 }
-void GameCanvas::requestRepaint(int var1) {
-    field_184 = var1;
+void GameCanvas::requestRepaint(int mode) {
+    repaintMode = mode;
     repaint();
     serviceRepaints();
 }
@@ -135,13 +134,12 @@ void GameCanvas::paint(Graphics* g) {
     drawGame(g);
 }
 void GameCanvas::drawGame(Graphics* g) {
-    if (!Micro::field_249 || micro->field_242) {
+    if (!Micro::isReady || micro->isRunning) {
         return;
     }
     graphics = g;
 
     // Проверяем размеры
-
     if (height != getHeight()) {
         updateSizeAndRepaint();
     }
@@ -151,8 +149,8 @@ void GameCanvas::drawGame(Graphics* g) {
     int logicalH = int(height / CAM_ZOOM);
 
     setViewPosition(
-        -gamePhysics->getCamPosX() + field_178 + logicalW/2,
-        gamePhysics->getCamPosY() + field_179 + logicalH/2
+        -gamePhysics->getCamPosX() + cameraOffsetX + logicalW/2,
+        gamePhysics->getCamPosY() + cameraOffsetY + logicalH/2
     );
     gamePhysics->renderGame(this);
 
@@ -166,20 +164,20 @@ void GameCanvas::clearInputStates() {
 }
 
 void GameCanvas::handleUpdatedInput() {
-    int var1 = 0, var2 = 0;
+    int dirX = 0, dirY = 0;
     for (int i = 0; i < 10; ++i) {
         if (activeKeys[i]) {
-            var1 += field_231[field_232][i][0];
-            var2 += field_231[field_232][i][1];
+            dirX += numKeyDirTable[numKeyMode][i][0];
+            dirY += numKeyDirTable[numKeyMode][i][1];
         }
     }
     for (int i = 0; i < 7; ++i) {
         if (activeActions[i]) {
-            var1 += field_230[i][0];
-            var2 += field_230[i][1];
+            dirX += actionDirTable[i][0];
+            dirY += actionDirTable[i][1];
         }
     }
-    gamePhysics->applyUserInput(var1, var2);
+    gamePhysics->applyUserInput(dirX, dirY);
 }
 
 
@@ -211,12 +209,12 @@ void GameCanvas::init(GamePhysics* gp) {
 }
 
 
-void GameCanvas::keyPressed(int var1) {
-    processKeyPressed(var1);
+void GameCanvas::keyPressed(int keyCode) {
+    processKeyPressed(keyCode);
 }
 
-void GameCanvas::keyReleased(int var1) {
-    processKeyReleased(var1);
+void GameCanvas::keyReleased(int keyCode) {
+    processKeyReleased(keyCode);
 }
 
 void GameCanvas::drawWheel(int x, int y, int radius) {
@@ -228,9 +226,6 @@ void GameCanvas::drawWheel(int x, int y, int radius) {
     setColor(150, 150, 150); // Серый цвет
     drawCircle(x, y, radius);
 }
-// GameCanvas.cpp (в конец файла)
-
-// GameCanvas.cpp
 
 void GameCanvas::drawSkyGradient() {
     const int num_bands = 16; // Количество "полос" в нашем градиенте. Больше = плавнее, но медленнее. 32 - хороший баланс.
@@ -251,5 +246,4 @@ void GameCanvas::drawSkyGradient() {
         graphics->fillRect(0, y_pos, width, (int)ceil(band_height));
     }
 }
-// GameCanvas.cpp (в конец файла)
 

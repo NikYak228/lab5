@@ -1,11 +1,11 @@
 #include "TimerOrMotoPartOrMenuElem.h"
 
-TimerOrMotoPartOrMenuElem::TimerOrMotoPartOrMenuElem() {
+MotoComponent::MotoComponent() {
     setToZeros();
 }
 
-void TimerOrMotoPartOrMenuElem::setToZeros() {
+void MotoComponent::setToZeros() {
     xF16 = yF16 = angleF16 = 0;
-    field_382 = field_383 = field_384 = 0;
-    field_385 = field_386 = field_387 = 0;
+    velX = velY = angularVelocity = 0;
+    forceX = forceY = torque = 0;
 }

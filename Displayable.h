@@ -5,6 +5,7 @@ class Command;
 // интерфейс для объектов, которые могут быть отображены и взаимодействовать с командами
 class Displayable {
 public:
+    virtual ~Displayable() = default;
     virtual bool isShown() = 0;
     virtual int getWidth() = 0;
     virtual int getHeight() = 0;

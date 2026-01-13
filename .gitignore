@@ -1,0 +1,29 @@
+# Build artifacts
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# Binaries
+mototest
+*.o
+*.obj
+*.exe
+*.dll
+*.dylib
+*.a
+*.lib
+*.out
+*.pdb
+*.dSYM/
+
+# macOS noise
+.DS_Store
+.vscode/
+
+# Logs
+*.log
+game_log.txt

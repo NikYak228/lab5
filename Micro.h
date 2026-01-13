@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <memory>
 
 class GameCanvas;
 class GamePhysics;
@@ -10,16 +11,16 @@ private:
     void destroyApp(bool var1);
 
 public:
-    GameCanvas* gameCanvas = nullptr;
-    LevelLoader* levelLoader = nullptr;
-    GamePhysics* gamePhysics = nullptr;
+    std::unique_ptr<GameCanvas> gameCanvas;
+    std::unique_ptr<LevelLoader> levelLoader;
+    std::unique_ptr<GamePhysics> gamePhysics;
 
-    bool field_242 = false;
+    bool isRunning = false;
     int numPhysicsLoops = 4;
     int64_t gameTimeMs = 0;
     bool isInited = false;
-    bool field_248 = false;
-    static bool field_249;
+    bool shouldStop = false;
+    static bool isReady;
 
     Micro();
     ~Micro();

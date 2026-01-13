@@ -20,15 +20,15 @@ private:
     int dx;
     int dy;
     GamePhysics* gamePhysics = nullptr;
-    int field_178 = 0;
-    int field_179 = 0;
+    int cameraOffsetX = 0;
+    int cameraOffsetY = 0;
     Micro* micro = nullptr;
     
-    int field_184 = 1;
+    int repaintMode = 1;
     
-    int field_230[7][2] = { { 0, 0 }, { 1, 0 }, { 0, -1 }, { 0, 0 }, { 0, 0 }, { 0, 1 }, { -1, 0 } };
-    int field_231[3][10][2] = { { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 0, -1 }, { -1, 0 }, { 0, 1 }, { -1, -1 }, { -1, 0 }, { -1, 1 } }, { { 0, 0 }, { 1, 0 }, { 0, 0 }, { 0, 0 }, { -1, 0 }, { 0, -1 }, { 0, 1 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }, { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } } };
-    int field_232 = 2;
+    int actionDirTable[7][2] = { { 0, 0 }, { 1, 0 }, { 0, -1 }, { 0, 0 }, { 0, 0 }, { 0, 1 }, { -1, 0 } };
+    int numKeyDirTable[3][10][2] = { { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 0, -1 }, { -1, 0 }, { 0, 1 }, { -1, -1 }, { -1, 0 }, { -1, 1 } }, { { 0, 0 }, { 1, 0 }, { 0, 0 }, { 0, 0 }, { -1, 0 }, { 0, -1 }, { 0, 1 }, { 0, 0 }, { 0, 0 }, { 0, 0 } }, { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 }, { -1, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } } };
+    int numKeyMode = 2;
     std::vector<bool> activeActions = std::vector<bool>(7);
     std::vector<bool> activeKeys = std::vector<bool>(10);
 public:
@@ -40,7 +40,7 @@ public:
     std::string timeToDisplay;
     void drawVectorChar(char c, int start_x, int start_y, int scale);
     void drawVectorString(const std::string& text, int start_x, int start_y, int scale);
-    void requestRepaint(int var1);
+    void requestRepaint(int mode);
     void drawWheel(int x, int y, int radius);
     void updateSizeAndRepaint();
     void resetInput();

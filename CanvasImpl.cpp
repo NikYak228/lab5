@@ -1,6 +1,6 @@
 #include "CanvasImpl.h"
 #include "Canvas.h"
-#include "Keys.h" // Создадим этот файл ниже
+#include "Keys.h" 
 #include "Micro.h"
 
 CanvasImpl::CanvasImpl(Canvas* canvas) {
@@ -71,12 +71,17 @@ int CanvasImpl::convertKeyCharToKeyCode(SDL_Keycode keyCode) {
     }
 }
 
+#include "Logger.h" // Ensure Logger is available
+
+// ... (existing code)
+
 void CanvasImpl::processEvents() {
     SDL_Event e;
     while (SDL_PollEvent(&e) != 0) {
         if (e.type == SDL_QUIT) {
+            LOG_INFO("SYS", "SDL_QUIT received. Exiting...");
             // Чтобы можно было закрыть окно крестиком
-            Micro::field_249 = false;
+            Micro::isReady = false;
         } else if (e.type == SDL_KEYDOWN) {
             if (e.key.keysym.sym == SDLK_ESCAPE) {
                  canvas->pressedEsc();
