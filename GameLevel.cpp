@@ -28,9 +28,18 @@ void GameLevel::renderTrackNearestGreenLine(GameCanvas *gameCanvas) {
   // Рисуем линию трассы
   gameCanvas->setColor(40, 200, 40); // Зеленый
 
+  // Оптимизация: Отсечение невидимых сегментов (Culling)
+  int dx = gameCanvas->addDx(0);
+  int minVisibleX = -dx - 2000; // Увеличенный запас для петель
+  int maxVisibleX = -dx + gameCanvas->getWidth() + 2000;
+
   for (int pointNo = 0; pointNo < pointsCount - 1; ++pointNo) {
     // Обратная конвертация для отрисовки
     int x1 = (int)((int64_t)pointPositions[pointNo][0] << 3 >> 16);
+    // Быстрая проверка видимости по X
+    if (x1 > maxVisibleX) break; 
+    if (x1 < minVisibleX) continue;
+
     int y1 = (int)((int64_t)pointPositions[pointNo][1] << 3 >> 16);
     int x2 = (int)((int64_t)pointPositions[pointNo + 1][0] << 3 >> 16);
     int y2 = (int)((int64_t)pointPositions[pointNo + 1][1] << 3 >> 16);
