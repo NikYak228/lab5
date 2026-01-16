@@ -27,3 +27,6 @@ mototest
 # Logs
 *.log
 game_log.txt
+
+# AI assistance tools (should not be in repository)
+conductor/
