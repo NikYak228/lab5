@@ -30,3 +30,7 @@ game_log.txt
 
 # AI assistance tools (should not be in repository)
 conductor/
+
+# Documentation files
+*.md
+!README.md
